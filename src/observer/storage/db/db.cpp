@@ -149,6 +149,7 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   string  table_file_path = table_meta_file(path_.c_str(), table_name);
   Table  *table           = new Table();
   int32_t table_id        = next_table_id_++;
+  printf("table file path:%s\npath:%s\n", table_file_path.c_str(), path_.c_str());
   rc = table->create(this, table_id, table_file_path.c_str(), table_name, path_.c_str(), attributes, storage_format);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create table %s.", table_name);
@@ -158,6 +159,34 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
 
   opened_tables_[table_name] = table;
   LOG_INFO("Create table success. table name=%s, table_id:%d", table_name, table_id);
+  return RC::SUCCESS;
+}
+
+auto Db::drop_table(const std::string tb_name) -> RC {
+  // 需要删除的文件包括: .table, .data,.index
+  if (find_table(tb_name.c_str()) == nullptr) {
+    // No such table. return silently
+    return RC::SUCCESS;
+  }
+  auto pos = opened_tables_.find(tb_name);
+  std::vector<std::string> files;
+  files.reserve(2 + pos->second->table_meta().index_num());
+  files.emplace_back(table_data_file(this->path_.c_str(), tb_name.c_str()));
+  files.emplace_back(table_meta_file(path_.c_str(), tb_name.c_str()));
+  auto table = pos->second;
+  auto tb_meta = table->table_meta();
+  for (int i = 0; i < table->table_meta().index_num(); i++) {
+    auto index_meta = tb_meta.index(i);
+    files.emplace_back(table_index_file(path_.c_str(), tb_name.c_str(), index_meta->name()));
+  }
+  delete pos->second;
+  opened_tables_.erase(pos);
+  for(auto &file : files) {
+    if (unlink(file.c_str()) < 0) {
+      LOG_INFO("failed to remove file %s", file.c_str());
+    }
+  }
+  
   return RC::SUCCESS;
 }
 
