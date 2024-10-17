@@ -16,12 +16,13 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "storage/db/db.h"
 #include "storage/table/table.h"
+#include "common/type/attr_type.h"
 
 InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount)
     : table_(table), values_(values), value_amount_(value_amount)
 {}
 
-RC InsertStmt::create(Db *db, const InsertSqlNode &inserts, Stmt *&stmt)
+RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
 {
   const char *table_name = inserts.relation_name.c_str();
   if (nullptr == db || nullptr == table_name || inserts.values.empty()) {
@@ -38,7 +39,7 @@ RC InsertStmt::create(Db *db, const InsertSqlNode &inserts, Stmt *&stmt)
   }
 
   // check the fields number
-  const Value     *values     = inserts.values.data();
+  Value     *values     = inserts.values.data();
   const int        value_num  = static_cast<int>(inserts.values.size());
   const TableMeta &table_meta = table->table_meta();
   const int        field_num  = table_meta.field_num() - table_meta.sys_field_num();
@@ -46,7 +47,21 @@ RC InsertStmt::create(Db *db, const InsertSqlNode &inserts, Stmt *&stmt)
     LOG_WARN("schema mismatch. value num=%d, field num in schema=%d", value_num, field_num);
     return RC::SCHEMA_FIELD_MISSING;
   }
-
+  for (int i = 0; i < field_num; ++i) {
+    auto field = table_meta.field(table_meta.sys_field_num() + i);
+    if (field->type() == AttrType::DATES) {
+      if (values[i].attr_type() != AttrType::CHARS) {
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      int date_val{0};
+      std::string date_str(values[i].data());
+      auto rc = date_str_to_int(date_str, date_val);
+      if (RC::SUCCESS != rc) {
+        return rc;
+      }
+      values[i].set_date(date_val);
+    }
+  }
   // everything alright
   stmt = new InsertStmt(table, values, value_num);
   return RC::SUCCESS;

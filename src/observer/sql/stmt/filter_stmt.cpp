@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/rc.h"
 #include "storage/db/db.h"
 #include "storage/table/table.h"
+#include "common/type/attr_type.h"
 
 FilterStmt::~FilterStmt()
 {
@@ -123,6 +124,30 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     FilterObj filter_obj;
     filter_obj.init_value(condition.right_value);
     filter_unit->set_right(filter_obj);
+  }
+  // cases like: u_date > '2011-9-11' where u_date is date type.
+  if (condition.left_is_attr && filter_unit->left().field.attr_type() == AttrType::DATES) {
+    if (!condition.right_is_attr && condition.right_value.attr_type() != AttrType::CHARS) {
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+    int date_val{0};
+    std::string date_str(condition.right_value.data());
+    if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+      return rc;
+    }
+    filter_unit->right().value.set_date(date_val);
+  }
+
+  if (condition.right_is_attr && filter_unit->right().field.attr_type() == AttrType::DATES) {
+    if (!condition.left_is_attr && condition.right_value.attr_type() != AttrType::CHARS) {
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+    int date_val{0};
+    std::string date_str(condition.right_value.data());
+    if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+      return rc;
+    }
+    filter_unit->left().value.set_date(date_val);
   }
 
   filter_unit->set_comp(comp);
