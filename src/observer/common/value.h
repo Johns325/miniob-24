@@ -36,6 +36,7 @@ public:
   friend class CharType;
   friend class DateType;
   friend class VectorType;
+  friend class SumAggregator;
 
   Value() = default;
 
@@ -111,13 +112,15 @@ public:
   float  get_float() const;
   string get_string() const;
   bool   get_boolean() const;
-
-private:
+  void   init_int(int val);
+  // get date type's corresponding int value.
+  uint32_t    get_uint() const { return static_cast<uint32_t>(value_.int_value_);}
+// private:
   void set_int(int val);
   void set_float(float val);
   void set_string(const char *s, int len = 0);
   void set_string_from_other(const Value &other);
-
+  void set_null() { attr_type_ = AttrType::NULLS; }
 private:
   AttrType attr_type_ = AttrType::UNDEFINED;
   int      length_    = 0;
