@@ -90,6 +90,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         STRING_T
         FLOAT_T
         DATE_T
+        LIKE
+        NOT
         VECTOR_T
         HELP
         EXIT
@@ -658,6 +660,8 @@ comp_op:
     | LE { $$ = LESS_EQUAL; }
     | GE { $$ = GREAT_EQUAL; }
     | NE { $$ = NOT_EQUAL; }
+    | LIKE { $$ = LK;}
+    | NOT LIKE { $$ = NOT_LK;}
     ;
 
 // your code here
