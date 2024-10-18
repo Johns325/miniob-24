@@ -339,3 +339,8 @@ bool Value::get_boolean() const
   }
   return false;
 }
+
+void Value::init_int(int val) {
+  this->attr_type_ = AttrType::INTS;
+  this->value_.int_value_ = val;
+}

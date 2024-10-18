@@ -15,7 +15,7 @@ See the Mulan PSL v2 for more details. */
 
 
 // const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "booleans", "dates"};
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "vectors", "booleans", "dates"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "vectors", "booleans", "dates", "nulls"};
 
 const char *attr_type_to_string(AttrType type)
 {
