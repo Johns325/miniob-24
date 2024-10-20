@@ -18,7 +18,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/stmt.h"
 
 class Table;
-
+class FilterStmt;
+class FieldMeta;
 /**
  * @brief 更新语句
  * @ingroup Statement
@@ -26,19 +27,24 @@ class Table;
 class UpdateStmt : public Stmt
 {
 public:
+  using value_vector = std::vector<std::unique_ptr<Value>>;
   UpdateStmt() = default;
-  UpdateStmt(Table *table, Value *values, int value_amount);
+  UpdateStmt(Table *table, std::string attr_name, int value_amount, FilterStmt* filter, Value* value);
 
 public:
   static RC create(Db *db, const UpdateSqlNode &update_sql, Stmt *&stmt);
-
+  StmtType type() const override { return StmtType::UPDATE; }
 public:
   Table *table() const { return table_; }
-  Value *values() const { return values_; }
+  auto attr_name() -> std::string { return attr_name_; }
+  auto filter() -> FilterStmt* { return filter_;}
+  value_vector &values()  { return values_; }
   int    value_amount() const { return value_amount_; }
 
 private:
-  Table *table_        = nullptr;
-  Value *values_       = nullptr;
-  int    value_amount_ = 0;
+  Table                      *table_{nullptr};
+  std::string                 attr_name_;
+  int                         value_amount_{0};
+  FilterStmt                 *filter_;
+  value_vector                values_;
 };

@@ -13,14 +13,61 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/stmt/update_stmt.h"
-
-UpdateStmt::UpdateStmt(Table *table, Value *values, int value_amount)
-    : table_(table), values_(values), value_amount_(value_amount)
-{}
+#include "common/value.h"
+#include "storage/db/db.h"
+#include "storage/table/table.h"
+#include "storage/table/table_meta.h"
+#include "sql/stmt/filter_stmt.h"
+UpdateStmt::UpdateStmt(Table *table, std::string attr_name, int value_amount, FilterStmt* filter, Value* values) 
+: table_(table), attr_name_(attr_name), value_amount_(value_amount), filter_(filter) {
+  int k{0};
+  while (k < value_amount_) {
+    values_.emplace_back(new Value(values[k]));
+    ++k;
+  }
+}
 
 RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
 {
   // TODO
-  stmt = nullptr;
-  return RC::INTERNAL;
+  auto table = db->find_table(update.relation_name.c_str());
+  if (table == nullptr){
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  auto field = table->table_meta().field(update.attribute_name.c_str());
+  if (field == nullptr) {
+    return RC::SCHEMA_FIELD_NOT_EXIST;
+  }
+  // TODO add support of updating multiple fields simultaneously.
+  Value v(update.value);
+  if (field->type() == AttrType::DATES) {
+    if (v.attr_type() != AttrType::CHARS) {
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+    int date_val{0};
+    std::string date_str(v.data());
+    auto rc = date_str_to_int(date_str, date_val);
+    if (!OB_SUCC(rc)) {
+      LOG_ERROR("update error, filed is date type while input is invalid. rc=%s", strrc(rc));
+      return rc;
+    }
+    v.set_date(date_val);
+  } else if (field->type() != v.attr_type()) {
+    auto rc = DataType::type_instance(field->type())->cast_to(update.value, field->type(), v);
+    if (!OB_SUCC(rc)) {
+      LOG_ERROR("update error, type dismatch and cannot type B cannot cast to type A.... rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+  FilterStmt * filter;
+  std::unordered_map<std::string, Table*> table_map{{update.relation_name, table}};
+
+  auto rc = FilterStmt::create(db, table, &table_map, update.conditions.data(), static_cast<int>(update.conditions.size()), filter);
+  if (!OB_SUCC(rc)) {
+    LOG_ERROR("update error, create filter encountered an error:%s", strrc(rc));
+    return rc;
+  }
+  auto u_stmt = new UpdateStmt(table, update.attribute_name, 1, filter, &v);
+  stmt = u_stmt;
+  return RC::SUCCESS;
 }

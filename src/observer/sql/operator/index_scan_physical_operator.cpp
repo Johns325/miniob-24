@@ -70,7 +70,7 @@ RC IndexScanPhysicalOperator::next()
 
   bool filter_result = false;
   while (RC::SUCCESS == (rc = index_scanner_->next_entry(&rid))) {
-    rc = record_handler_->get_record(rid, current_record_);
+    rc = record_handler_->get_record(rid, current_record_, mode_);
     if (OB_FAIL(rc)) {
       LOG_TRACE("failed to get record. rid=%s, rc=%s", rid.to_string().c_str(), strrc(rc));
       return rc;

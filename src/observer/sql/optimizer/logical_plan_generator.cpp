@@ -26,6 +26,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/project_logical_operator.h"
 #include "sql/operator/table_get_logical_operator.h"
 #include "sql/operator/group_by_logical_operator.h"
+#include "sql/operator/update_logical_operator.h"
 
 #include "sql/stmt/calc_stmt.h"
 #include "sql/stmt/delete_stmt.h"
@@ -33,6 +34,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "sql/stmt/insert_stmt.h"
 #include "sql/stmt/select_stmt.h"
+#include "sql/stmt/update_stmt.h"
 #include "sql/stmt/stmt.h"
 
 #include "sql/expr/expression_iterator.h"
@@ -66,6 +68,10 @@ RC LogicalPlanGenerator::create(Stmt *stmt, unique_ptr<LogicalOperator> &logical
       DeleteStmt *delete_stmt = static_cast<DeleteStmt *>(stmt);
 
       rc = create_plan(delete_stmt, logical_operator);
+    } break;
+
+    case StmtType::UPDATE :{
+      rc = create_plan(static_cast<UpdateStmt*>(stmt), logical_operator);
     } break;
 
     case StmtType::EXPLAIN: {
@@ -276,6 +282,27 @@ RC LogicalPlanGenerator::create_plan(ExplainStmt *explain_stmt, unique_ptr<Logic
   logical_operator = unique_ptr<LogicalOperator>(new ExplainLogicalOperator);
   logical_operator->add_child(std::move(child_oper));
   return rc;
+}
+
+RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
+  
+  auto table = update_stmt->table();
+  auto filter = update_stmt->filter();
+  UptrLogOper table_scan(new TableGetLogicalOperator(table, ReadWriteMode::READ_WRITE));
+  UptrLogOper pred_oper;
+  auto rc = create_plan(filter, pred_oper);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  UptrLogOper update_oper (new UpdateLogicalOperator(table, update_stmt->attr_name(), update_stmt->value_amount(), std::move(update_stmt->values())));
+  if (pred_oper) {
+    pred_oper->add_child(std::move(table_scan));
+    update_oper->add_child(std::move(pred_oper));
+  } else {
+    update_oper->add_child(std::move(table_scan));
+  }
+  logical_operator = std::move(update_oper);
+  return RC::SUCCESS;
 }
 
 RC LogicalPlanGenerator::create_group_by_plan(SelectStmt *select_stmt, unique_ptr<LogicalOperator> &logical_operator)

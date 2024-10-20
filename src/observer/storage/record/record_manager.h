@@ -397,7 +397,7 @@ public:
    */
   RC recover_insert_record(const char *data, int record_size, const RID &rid);
 
-  RC get_record(const RID &rid, Record &record);
+  RC get_record(const RID &rid, Record &record, ReadWriteMode mode = ReadWriteMode::READ_ONLY);
 
   RC visit_record(const RID &rid, function<bool(Record &)> updater);
 

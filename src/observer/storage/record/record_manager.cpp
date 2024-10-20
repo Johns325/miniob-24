@@ -648,7 +648,7 @@ RC RecordFileHandler::delete_record(const RID *rid)
   return rc;
 }
 
-RC RecordFileHandler::get_record(const RID &rid, Record &record)
+RC RecordFileHandler::get_record(const RID &rid, Record &record, ReadWriteMode mode)
 {
   unique_ptr<RecordPageHandler> page_handler(RecordPageHandler::create(storage_format_));
 
@@ -657,16 +657,24 @@ RC RecordFileHandler::get_record(const RID &rid, Record &record)
     LOG_ERROR("Failed to init record page handler.page number=%d", rid.page_num);
     return rc;
   }
+  if (mode ==ReadWriteMode::READ_ONLY) {
+    Record inplace_record;
+    rc = page_handler->get_record(rid, inplace_record);
+    if (OB_FAIL(rc)) {
+      LOG_WARN("failed to get record from record page handle. rid=%s, rc=%s", rid.to_string().c_str(), strrc(rc));
+      return rc;
+    }
 
-  Record inplace_record;
-  rc = page_handler->get_record(rid, inplace_record);
-  if (OB_FAIL(rc)) {
-    LOG_WARN("failed to get record from record page handle. rid=%s, rc=%s", rid.to_string().c_str(), strrc(rc));
-    return rc;
+    record.copy_data(inplace_record.data(), inplace_record.len());
+    record.set_rid(rid);
+  } else {
+    rc = page_handler->get_record(rid, record);
+    if (OB_FAIL(rc)) {
+      LOG_WARN("failed to get record from record page handle. rid=%s, rc=%s", rid.to_string().c_str(), strrc(rc));
+      return rc;
+    }
+    record.set_rid(rid);
   }
-
-  record.copy_data(inplace_record.data(), inplace_record.len());
-  record.set_rid(rid);
   return rc;
 }
 

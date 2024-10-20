@@ -40,6 +40,7 @@ class Db;
 class Table
 {
 public:
+  friend class UpdatePhysicalOperator;
   Table() = default;
   ~Table();
 

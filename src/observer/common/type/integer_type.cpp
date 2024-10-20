@@ -52,6 +52,27 @@ RC IntegerType::negative(const Value &val, Value &result) const
   return RC::SUCCESS;
 }
 
+RC IntegerType::cast_to(const Value &val, AttrType type, Value &result) const {
+  switch (val.attr_type())
+  {
+  case AttrType::CHARS:
+    try {
+      std::atoi(val.data());
+    } catch(const std::exception& e) {
+      std::cerr << e.what() << '\n';
+    }
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    break;
+  case AttrType::FLOATS: {
+    int int_val = static_cast<int>(val.get_float());
+    result.set_int(int_val);
+  } break;
+  default:
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  }
+  return RC::SUCCESS;
+}
+
 RC IntegerType::set_value_from_str(Value &val, const string &data) const
 {
   RC                rc = RC::SUCCESS;
