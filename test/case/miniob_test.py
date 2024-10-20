@@ -675,12 +675,14 @@ class TestSuite:
       lines1 = f1.readlines()
       lines2 = f2.readlines()
       if len(lines1) != len(lines2):
+        print("line number is different")
         return False
 
       line_num = len(lines1)
       for i in range(line_num):
         if lines1[i].upper() != lines2[i].upper():
           _logger.info('file1=%s, file2=%s, line1=%s, line2=%s', file1, file2, lines1[i], lines2[i])
+          print("dismatch occured in line ",i)
           return False
       return True
 
