@@ -83,6 +83,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         LBRACE
         RBRACE
         COMMA
+        UNIQUE
         TRX_BEGIN
         TRX_COMMIT
         TRX_ROLLBACK
@@ -139,6 +140,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   int                                        number;
   float                                      floats;
   std::vector<float> *                       vector;
+  bool                                       boolean_type;
 }
 
 %token <number> NUMBER
@@ -172,6 +174,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <sql_node>            select_stmt
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
+%type <boolean_type>        unique_stmt
 %type <sql_node>            delete_stmt
 %type <sql_node>            create_table_stmt
 %type <sql_node>            drop_table_stmt
@@ -284,23 +287,32 @@ desc_table_stmt:
     ;
 
 create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID attr_list RBRACE
+    CREATE unique_stmt INDEX ID ON ID LBRACE ID attr_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
       CreateIndexSqlNode &create_index = $$->create_index;
-      create_index.index_name = $3;
-      create_index.relation_name = $5;
-      if ($8 != nullptr) {
-        create_index.attribute_names.swap(*$8);
-        delete $8;  
+      create_index.unique = $2;
+      create_index.index_name = $4;
+      create_index.relation_name = $6;
+      if ($9 != nullptr) {
+        create_index.attribute_names.swap(*$9);
+        delete $9;  
       }
-      create_index.attribute_names.emplace_back($7);
+      create_index.attribute_names.emplace_back($8);
       std::reverse(create_index.attribute_names.begin(), create_index.attribute_names.end());
-      free($3);
-      free($5);
-      free($7);
+      free($4);
+      free($6);
+      free($8);
     }
     ;
+unique_stmt:
+  /* empty */
+  {
+    $$ = false;
+  }
+  | UNIQUE {
+    $$ = true;
+  }
 attr_list:
   /* empty */
   {
