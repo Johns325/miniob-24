@@ -30,24 +30,26 @@ class Value;
  * @details 一个索引包含了表的哪些字段，索引的名称等。
  * 如果以后实现了多种类型的索引，还需要记录索引的类型，对应类型的一些元数据等
  */
-class IndexMeta
-{
+class IndexMeta {
 public:
   IndexMeta() = default;
 
-  RC init(const char *name, const FieldMeta &field);
+  RC init(const char *name, std::vector<const FieldMeta *>& field, bool unique);
 
 public:
   const char *name() const;
-  const char *field() const;
+  const std::vector<string>& fields() const;
 
   void desc(ostream &os) const;
+  size_t field_size() const { return fields_.size(); }
+  const string& field_name_at(int index) const { return fields_[index]; }
 
 public:
   void      to_json(Json::Value &json_value) const;
   static RC from_json(const TableMeta &table, const Json::Value &json_value, IndexMeta &index);
-
+  bool unique() const  { return unique_; }
 protected:
   string name_;   // index's name
-  string field_;  // field's name
+  std::vector<string> fields_;  // field's name
+  bool unique_;
 };
