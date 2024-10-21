@@ -83,32 +83,63 @@ QUOTE            [\'\"]
 \n                                                   ;
 
 
-\'\[\s*[0-9]+(\.[0-9]+)?(\s*,\s*[0-9]+(\.[0-9]+)?)*\s*\]\' {
-    int length = yyleng - 4;  
+(\'?\[[^]]*\]\'?) {
+    int offset = 0;
+    if (yytext[0] == '\'') {
+        offset++;
+    }
+    if (yytext[offset] != '[') {
+    }
+    offset++;
+    int end_offset = yyleng - 1;
+    if (yytext[end_offset] == '\'') {
+        end_offset--;
+    }
+    if (yytext[end_offset] != ']') {
+    }
+    end_offset--;
+    int length = end_offset - offset + 1;
+    if (length < 0) {
+    }
     char *vector_str = (char *)malloc(length + 1);
-    strncpy(vector_str, yytext + 2, length);
+    if (vector_str == NULL) {
+    }
+    strncpy(vector_str, yytext + offset, length);
     vector_str[length] = '\0';
+
     std::vector<float> *vec = new std::vector<float>();
     char *token;
     char *saveptr = NULL;
     token = strtok_r(vector_str, ",", &saveptr);
     while (token != NULL) {
-        while (*token == ' ' || *token == '\t') {
-            token++;
+        char *p = token;
+        char *q = token;
+        while (*q != '\0') {
+            if (*q != ' ' && *q != '\t') {
+                *p++ = *q;
+            }
+            q++;
         }
-        char *end = token + strlen(token) - 1;
-        while (end > token && (*end == ' ' || *end == '\t')) {
-            *end = '\0';
-            end--;
+        *p = '\0';
+        if (strlen(token) == 0) {
+            delete vec;
+            free(vector_str);
         }
-        float value = atof(token);
+        char *endptr;
+        float value = strtof(token, &endptr);
+        if (*endptr != '\0') {
+            delete vec;
+            free(vector_str);
+        }
         vec->push_back(value);
         token = strtok_r(NULL, ",", &saveptr);
     }
-    free(vector_str); 
+    free(vector_str);
     yylval->vector = vec;
-    RETURN_TOKEN(VECTOR_DATA);  
-} 
+    RETURN_TOKEN(VECTOR_DATA);
+}
+
+
 
 [\-]?{DIGIT}+                           yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 [\-]?{DIGIT}+{DOT}{DIGIT}+              yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
