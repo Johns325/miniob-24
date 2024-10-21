@@ -1975,7 +1975,7 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   } else {
 
     char *fixed_right_key          = const_cast<char *>(right_user_key);
-    for (int i = 0; i < tree_handler_.file_header_.attr_nums; i++) {  
+    for(int i = 0; i < tree_handler_.file_header_.attr_nums; ++i) {
       bool  should_include_after_fix = false;
       if (tree_handler_.file_header_.attr_types[i] == AttrType::CHARS) {
         rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);

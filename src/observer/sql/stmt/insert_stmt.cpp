@@ -49,6 +49,11 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
   }
   for (int i = 0; i < field_num; ++i) {
     auto field = table_meta.field(table_meta.sys_field_num() + i);
+    if(field->type() == AttrType::VECTORS) {
+        if(inserts.values[i].attr_type() != AttrType::VECTORS ||
+          inserts.values[i].length() != field->len())
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
     if (field->type() == AttrType::DATES) {
       if (values[i].attr_type() != AttrType::CHARS) {
         return RC::SCHEMA_FIELD_TYPE_MISMATCH;

@@ -27,6 +27,11 @@ while (0);
 %{
 #include<string.h>
 #include<stdio.h>
+#include <cstring>
+#include <cstdio>
+#include <vector>
+#include <cstdlib>
+
 
 /**
  * flex 代码包含三个部分，使用 %% 分隔
@@ -77,6 +82,65 @@ QUOTE            [\'\"]
 {WHITE_SAPCE}                                        // ignore whitespace
 \n                                                   ;
 
+
+(\'?\[[^]]*\]\'?) {
+    int offset = 0;
+    if (yytext[0] == '\'') {
+        offset++;
+    }
+    if (yytext[offset] != '[') {
+    }
+    offset++;
+    int end_offset = yyleng - 1;
+    if (yytext[end_offset] == '\'') {
+        end_offset--;
+    }
+    if (yytext[end_offset] != ']') {
+    }
+    end_offset--;
+    int length = end_offset - offset + 1;
+    if (length < 0) {
+    }
+    char *vector_str = (char *)malloc(length + 1);
+    if (vector_str == NULL) {
+    }
+    strncpy(vector_str, yytext + offset, length);
+    vector_str[length] = '\0';
+
+    std::vector<float> *vec = new std::vector<float>();
+    char *token;
+    char *saveptr = NULL;
+    token = strtok_r(vector_str, ",", &saveptr);
+    while (token != NULL) {
+        char *p = token;
+        char *q = token;
+        while (*q != '\0') {
+            if (*q != ' ' && *q != '\t') {
+                *p++ = *q;
+            }
+            q++;
+        }
+        *p = '\0';
+        if (strlen(token) == 0) {
+            delete vec;
+            free(vector_str);
+        }
+        char *endptr;
+        float value = strtof(token, &endptr);
+        if (*endptr != '\0') {
+            delete vec;
+            free(vector_str);
+        }
+        vec->push_back(value);
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+    free(vector_str);
+    yylval->vector = vec;
+    RETURN_TOKEN(VECTOR_DATA);
+}
+
+
+
 [\-]?{DIGIT}+                           yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 [\-]?{DIGIT}+{DOT}{DIGIT}+              yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
 
@@ -123,6 +187,13 @@ GROUP                                   RETURN_TOKEN(GROUP);
 BY                                      RETURN_TOKEN(BY);
 STORAGE                                 RETURN_TOKEN(STORAGE);
 FORMAT                                  RETURN_TOKEN(FORMAT);
+L2_DISTANCE                             RETURN_TOKEN(L2_DISTANCE);
+INNER_PRODUCT                           RETURN_TOKEN(INNER_PRODUCT);
+COSINE_DISTANCE                         RETURN_TOKEN(COSINE_DISTANCE);
+
+
+
+
 {ID}                                    yylval->string=strdup(yytext); RETURN_TOKEN(ID);
 "("                                     RETURN_TOKEN(LBRACE);
 ")"                                     RETURN_TOKEN(RBRACE);
@@ -135,6 +206,7 @@ FORMAT                                  RETURN_TOKEN(FORMAT);
 "<"                                     RETURN_TOKEN(LT);
 ">="                                    RETURN_TOKEN(GE);
 ">"                                     RETURN_TOKEN(GT);
+
 
 "+" |
 "-" |

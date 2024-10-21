@@ -75,6 +75,7 @@ TEST(BplusTreeLog, base)
 
   // auto bplus_tree = make_unique<BplusTreeHandler>();
   // ASSERT_EQ(RC::SUCCESS, bplus_tree->create(*log_handler, *buffer_pool, AttrType::INTS, 4));
+  // // ASSERT_EQ(RC::SUCCESS, bplus_tree->create(*log_handler, *buffer_pool, AttrType::INTS, 4));
 
   // // 2. insert some key-value pairs into the bplus tree
   // const int   insert_num = 10000;

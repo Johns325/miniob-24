@@ -28,6 +28,10 @@ Value::Value(bool val) { set_boolean(val); }
 
 Value::Value(const char *s, int len /*= 0*/) { set_string(s, len); }
 
+Value::Value(const float *vec,int len) {
+  set_vector(vec,len);
+}
+
 Value::Value(const Value &other)
 {
   this->attr_type_ = other.attr_type_;
@@ -37,7 +41,17 @@ Value::Value(const Value &other)
     case AttrType::CHARS: {
       set_string_from_other(other);
     } break;
-
+    case AttrType::VECTORS: {
+       if (other.value_.vector_value_ != nullptr) {
+        this->own_data_ = true;  // 我们拥有新分配的内存
+        int num_elements = other.length_ / sizeof(float);
+        value_.vector_value_ = new float[num_elements];
+        memcpy(value_.vector_value_, other.value_.vector_value_, other.length_);
+      } else {
+        value_.vector_value_ = nullptr;
+        this->own_data_ = false;
+      }
+    } break;
     default: {
       this->value_ = other.value_;
     } break;
@@ -67,7 +81,17 @@ Value &Value::operator=(const Value &other)
     case AttrType::CHARS: {
       set_string_from_other(other);
     } break;
-
+    case AttrType::VECTORS: {
+      if (other.value_.vector_value_ != nullptr) {
+        this->own_data_ = true;  // 我们拥有新分配的内存
+        int num_elements = other.length_ / sizeof(float);
+        value_.vector_value_ = new float[num_elements];
+        memcpy(value_.vector_value_, other.value_.vector_value_, other.length_);
+      } else {
+        value_.vector_value_ = nullptr;
+        this->own_data_ = false;
+      }
+    } break;
     default: {
       this->value_ = other.value_;
     } break;
@@ -97,6 +121,12 @@ void Value::reset()
       if (own_data_ && value_.pointer_value_ != nullptr) {
         delete[] value_.pointer_value_;
         value_.pointer_value_ = nullptr;
+      }
+      break;
+    case AttrType::VECTORS:
+      if (own_data_ && value_.vector_value_ != nullptr) {
+        delete[] value_.vector_value_;
+        value_.vector_value_ = nullptr;
       }
       break;
     default: break;
@@ -129,6 +159,9 @@ void Value::set_data(char *data, int length)
       value_.int_value_ = *(int*)data;
       length_ = length;
     } break;
+    case AttrType::VECTORS: {
+      set_vector((float*)data,length);
+    }
     default: {
       LOG_WARN("unknown data type: %d", attr_type_);
     } break;
@@ -187,6 +220,24 @@ void Value::set_string(const char *s, int len /*= 0*/)
   }
 }
 
+void Value::set_vector(const float* vec,int len)
+{
+  reset();
+  attr_type_ = AttrType::VECTORS;
+  if(vec == nullptr) {
+    value_.vector_value_ = nullptr;
+    length_ = 0;
+  } else {
+    own_data_ = true;
+    length_ = len;
+    value_.vector_value_ = new float[len/4];
+    for(int i = 0; i < len/4; i++) {
+      value_.vector_value_[i] = vec[i];
+    }
+  }
+}
+
+
 void Value::set_value(const Value &value)
 {
   switch (value.attr_type_) {
@@ -201,6 +252,9 @@ void Value::set_value(const Value &value)
     } break;
     case AttrType::BOOLEANS: {
       set_boolean(value.get_boolean());
+    } break;
+    case AttrType::VECTORS: {
+      set_vector(value.get_vector(), value.length_);
     } break;
     default: {
       ASSERT(false, "got an invalid value type");
@@ -223,6 +277,9 @@ const char *Value::data() const
   switch (attr_type_) {
     case AttrType::CHARS: {
       return value_.pointer_value_;
+    } break;
+    case AttrType::VECTORS: {
+      return (char*)value_.vector_value_;
     } break;
     default: {
       return (const char *)&value_;
@@ -338,6 +395,10 @@ bool Value::get_boolean() const
     }
   }
   return false;
+}
+
+float* Value::get_vector() const {
+  return value_.vector_value_;
 }
 
 void Value::init_int(int val) {

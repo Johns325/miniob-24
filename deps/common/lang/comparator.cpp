@@ -66,4 +66,19 @@ int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_len
   return 0;
 }
 
+int compare_vector(void *arg1, int arg1_max_length, void *arg2, int arg2_max_length) 
+{
+  const float *vec1 = (const float*)arg1;
+  const float *vec2 = (const float*)arg2;
+
+  for(int i = 0; i < arg1_max_length/4; i++) {
+    if(vec1[i] < vec2[i]) {
+      return -1;
+    } else if(vec1[i] > vec2[i]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 }  // namespace common

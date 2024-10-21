@@ -20,6 +20,5 @@ RC Index::init(const IndexMeta &index_meta, std::vector<const FieldMeta*> &field
   for (size_t i = 0; i < fields_meta.size(); i++) {
     field_metas_[i] = *fields_meta[i];
   }
-  
   return RC::SUCCESS;
 }
