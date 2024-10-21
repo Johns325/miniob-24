@@ -1907,64 +1907,66 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   } else {
 
     char *fixed_left_key = const_cast<char *>(left_user_key);
-    if (tree_handler_.file_header_.attr_type == AttrType::CHARS) {
-      bool should_inclusive_after_fix = false;
-      rc = fix_user_key(left_user_key, left_len, true /*greater*/, &fixed_left_key, &should_inclusive_after_fix);
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to fix left user key. rc=%s", strrc(rc));
-        return rc;
+    for (int i = 0; i < tree_handler_.file_header_.attr_nums; i++) {
+      if (tree_handler_.file_header_.attr_types[i] == AttrType::CHARS) {
+        bool should_inclusive_after_fix = false;
+        rc = fix_user_key(left_user_key, left_len, true /*greater*/, &fixed_left_key, &should_inclusive_after_fix);
+        if (OB_FAIL(rc)) {
+          LOG_WARN("failed to fix left user key. rc=%s", strrc(rc));
+          return rc;
+        }
+
+        if (should_inclusive_after_fix) {
+          left_inclusive = true;
+        }
       }
 
-      if (should_inclusive_after_fix) {
-        left_inclusive = true;
+      MemPoolItem::item_unique_ptr left_pkey;
+      if (left_inclusive) {
+        left_pkey = tree_handler_.make_key(fixed_left_key, *RID::min());
+      } else {
+        left_pkey = tree_handler_.make_key(fixed_left_key, *RID::max());
       }
-    }
 
-    MemPoolItem::item_unique_ptr left_pkey;
-    if (left_inclusive) {
-      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::min());
-    } else {
-      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::max());
-    }
+      const char *left_key = (const char *)left_pkey.get();
 
-    const char *left_key = (const char *)left_pkey.get();
+      if (fixed_left_key != left_user_key) {
+        delete[] fixed_left_key;
+        fixed_left_key = nullptr;
+      }
 
-    if (fixed_left_key != left_user_key) {
-      delete[] fixed_left_key;
-      fixed_left_key = nullptr;
-    }
-
-    rc = tree_handler_.find_leaf(mtr_, BplusTreeOperationType::READ, left_key, current_frame_);
-    if (rc == RC::EMPTY) {
-      rc             = RC::SUCCESS;
-      current_frame_ = nullptr;
-      return rc;
-    } else if (OB_FAIL(rc)) {
-      LOG_WARN("failed to find left page. rc=%s", strrc(rc));
-      return rc;
-    }
-
-    LeafIndexNodeHandler left_node(mtr_, tree_handler_.file_header_, current_frame_);
-    int                  left_index = left_node.lookup(tree_handler_.key_comparator_, left_key);
-    // lookup 返回的是适合插入的位置，还需要判断一下是否在合适的边界范围内
-    if (left_index >= left_node.size()) {  // 超出了当前页，就需要向后移动一个位置
-      const PageNum next_page_num = left_node.next_page();
-      if (next_page_num == BP_INVALID_PAGE_NUM) {  // 这里已经是最后一页，说明当前扫描，没有数据
-        latch_memo.release();
+      rc = tree_handler_.find_leaf(mtr_, BplusTreeOperationType::READ, left_key, current_frame_);
+      if (rc == RC::EMPTY) {
+        rc             = RC::SUCCESS;
         current_frame_ = nullptr;
-        return RC::SUCCESS;
-      }
-
-      rc = latch_memo.get_page(next_page_num, current_frame_);
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to fetch next page. page num=%d, rc=%s", next_page_num, strrc(rc));
+        return rc;
+      } else if (OB_FAIL(rc)) {
+        LOG_WARN("failed to find left page. rc=%s", strrc(rc));
         return rc;
       }
-      latch_memo.slatch(current_frame_);
 
-      left_index = 0;
+      LeafIndexNodeHandler left_node(mtr_, tree_handler_.file_header_, current_frame_);
+      int                  left_index = left_node.lookup(tree_handler_.key_comparator_, left_key);
+      // lookup 返回的是适合插入的位置，还需要判断一下是否在合适的边界范围内
+      if (left_index >= left_node.size()) {  // 超出了当前页，就需要向后移动一个位置
+        const PageNum next_page_num = left_node.next_page();
+        if (next_page_num == BP_INVALID_PAGE_NUM) {  // 这里已经是最后一页，说明当前扫描，没有数据
+          latch_memo.release();
+          current_frame_ = nullptr;
+          return RC::SUCCESS;
+        }
+
+        rc = latch_memo.get_page(next_page_num, current_frame_);
+        if (OB_FAIL(rc)) {
+          LOG_WARN("failed to fetch next page. page num=%d, rc=%s", next_page_num, strrc(rc));
+          return rc;
+        }
+        latch_memo.slatch(current_frame_);
+
+        left_index = 0;
+      }
+      iter_index_ = left_index;
     }
-    iter_index_ = left_index;
   }
 
   // 没有指定右边界范围，那么就返回右边界最大值
@@ -1973,28 +1975,31 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   } else {
 
     char *fixed_right_key          = const_cast<char *>(right_user_key);
-    bool  should_include_after_fix = false;
-    if (tree_handler_.file_header_.attr_type == AttrType::CHARS) {
-      rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to fix right user key. rc=%s", strrc(rc));
-        return rc;
+    for (int i = 0; i < tree_handler_.file_header_.attr_nums; i++) {  
+      bool  should_include_after_fix = false;
+      if (tree_handler_.file_header_.attr_types[i] == AttrType::CHARS) {
+        rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);
+        if (OB_FAIL(rc)) {
+          LOG_WARN("failed to fix right user key. rc=%s", strrc(rc));
+          return rc;
+        }
+
+        if (should_include_after_fix) {
+          right_inclusive = true;
+        }
+      }
+      if (right_inclusive) {
+        right_key_ = tree_handler_.make_key(fixed_right_key, *RID::max());
+      } else {
+        right_key_ = tree_handler_.make_key(fixed_right_key, *RID::min());
       }
 
-      if (should_include_after_fix) {
-        right_inclusive = true;
+      if (fixed_right_key != right_user_key) {
+        delete[] fixed_right_key;
+        fixed_right_key = nullptr;
       }
     }
-    if (right_inclusive) {
-      right_key_ = tree_handler_.make_key(fixed_right_key, *RID::max());
-    } else {
-      right_key_ = tree_handler_.make_key(fixed_right_key, *RID::min());
-    }
-
-    if (fixed_right_key != right_user_key) {
-      delete[] fixed_right_key;
-      fixed_right_key = nullptr;
-    }
+    
   }
 
   if (touch_end()) {

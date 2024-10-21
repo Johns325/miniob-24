@@ -96,8 +96,8 @@ public:
 
 private:
   std::vector<AttrType> attr_types_;
-  std::vector<pair<int,int>> offsets_sizes_;
-  int      attr_length_;
+  std::vector<pair<int,int>> offsets_sizes_; //each key's size and offset in a table row. i.e. row:a,b,c,d with sizes:4,8,4,4. if b,d is the index key, then{{8,4},{4,16}};
+  int      attr_length_; // the total length of index key.
 };
 
 /**
@@ -212,8 +212,8 @@ struct IndexFileHeader
   int32_t  leaf_max_size;      ///< 叶子节点最大的键值对数
   int32_t  attr_length;        ///< 键值的长度
   int32_t  key_length;         ///< attr length + sizeof(RID)
-  int32_t attr_nums;
-  int32_t unique_index;
+  int32_t  attr_nums;
+  int32_t  unique_index;
   std::vector<AttrType> attr_types;          ///< 键值的类型
   std::vector<pair<int32_t,int32_t>> off_and_sizes;
   const string to_string() const {
