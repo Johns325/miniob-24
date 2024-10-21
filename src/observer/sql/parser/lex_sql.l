@@ -27,6 +27,11 @@ while (0);
 %{
 #include<string.h>
 #include<stdio.h>
+#include <cstring>
+#include <cstdio>
+#include <vector>
+#include <cstdlib>
+
 
 /**
  * flex 代码包含三个部分，使用 %% 分隔
@@ -77,6 +82,34 @@ QUOTE            [\'\"]
 {WHITE_SAPCE}                                        // ignore whitespace
 \n                                                   ;
 
+
+\'\[\s*[0-9]+(\.[0-9]+)?(\s*,\s*[0-9]+(\.[0-9]+)?)*\s*\]\' {
+    int length = yyleng - 4;  
+    char *vector_str = (char *)malloc(length + 1);
+    strncpy(vector_str, yytext + 2, length);
+    vector_str[length] = '\0';
+    std::vector<float> *vec = new std::vector<float>();
+    char *token;
+    char *saveptr = NULL;
+    token = strtok_r(vector_str, ",", &saveptr);
+    while (token != NULL) {
+        while (*token == ' ' || *token == '\t') {
+            token++;
+        }
+        char *end = token + strlen(token) - 1;
+        while (end > token && (*end == ' ' || *end == '\t')) {
+            *end = '\0';
+            end--;
+        }
+        float value = atof(token);
+        vec->push_back(value);
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+    free(vector_str); 
+    yylval->vector = vec;
+    RETURN_TOKEN(VECTOR_DATA);  
+} 
+
 [\-]?{DIGIT}+                           yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 [\-]?{DIGIT}+{DOT}{DIGIT}+              yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
 
@@ -122,6 +155,13 @@ GROUP                                   RETURN_TOKEN(GROUP);
 BY                                      RETURN_TOKEN(BY);
 STORAGE                                 RETURN_TOKEN(STORAGE);
 FORMAT                                  RETURN_TOKEN(FORMAT);
+L2_DISTANCE                             RETURN_TOKEN(L2_DISTANCE);
+INNER_PRODUCT                           RETURN_TOKEN(INNER_PRODUCT);
+COSINE_DISTANCE                         RETURN_TOKEN(COSINE_DISTANCE);
+
+
+
+
 {ID}                                    yylval->string=strdup(yytext); RETURN_TOKEN(ID);
 "("                                     RETURN_TOKEN(LBRACE);
 ")"                                     RETURN_TOKEN(RBRACE);
@@ -134,6 +174,7 @@ FORMAT                                  RETURN_TOKEN(FORMAT);
 "<"                                     RETURN_TOKEN(LT);
 ">="                                    RETURN_TOKEN(GE);
 ">"                                     RETURN_TOKEN(GT);
+
 
 "+" |
 "-" |

@@ -361,6 +361,9 @@ public:
     MUL,
     DIV,
     NEGATIVE,
+    L2_DISTANCE,
+    INNER_PRODUCT,
+    COSINE_DISTANCE,
   };
 
 public:
@@ -369,11 +372,13 @@ public:
   virtual ~ArithmeticExpr() = default;
 
   bool     equal(const Expression &other) const override;
-  ExprType type() const override { return ExprType::ARITHMETIC; }
+  ExprType type() const override { return ExprType::ARITHMETIC;}
 
   AttrType value_type() const override;
   int      value_length() const override
   {
+    if(arithmetic_type_ == Type::L2_DISTANCE || arithmetic_type_ == Type::COSINE_DISTANCE || arithmetic_type_ == Type::INNER_PRODUCT)
+      return 4;
     if (!right_) {
       return left_->value_length();
     }
@@ -385,6 +390,7 @@ public:
   RC get_column(Chunk &chunk, Column &column) override;
 
   RC try_get_value(Value &value) const override;
+
 
   Type arithmetic_type() const { return arithmetic_type_; }
 

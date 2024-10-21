@@ -48,6 +48,7 @@ public:
   explicit Value(float val);
   explicit Value(bool val);
   explicit Value(const char *s, int len = 0);
+  explicit Value(const float *vec,int len);
 
   Value(const Value &other);
   Value(Value &&other);
@@ -76,6 +77,23 @@ public:
   {
     return DataType::type_instance(result.attr_type())->divide(left, right, result);
   }
+
+  static RC l2_distance(const Value &left, const Value &right, Value &result)
+  {
+    return DataType::type_instance(result.attr_type())->l2_distance(left, right, result);
+  }
+
+  static RC inner_product(const Value &left, const Value &right, Value &result)
+  {
+    return DataType::type_instance(result.attr_type())->inner_product(left, right, result);
+  }
+
+  static RC cosine_distance(const Value &left, const Value &right, Value &result)
+  {
+    return DataType::type_instance(result.attr_type())->cosine_distance(left, right, result);
+  }
+
+
 
   static RC negative(const Value &value, Value &result)
   {
@@ -109,6 +127,7 @@ public:
    * 如果当前的类型与期望获取的类型不符，就会执行转换操作
    */
   int    get_int() const;
+  float *get_vector() const;
   float  get_float() const;
   string get_string() const;
   bool   get_boolean() const;
@@ -119,6 +138,7 @@ public:
   void set_int(int val);
   void set_float(float val);
   void set_string(const char *s, int len = 0);
+  void set_vector(const float* vec,int len);
   void set_string_from_other(const Value &other);
   void set_null() { attr_type_ = AttrType::NULLS; }
 private:
@@ -131,6 +151,7 @@ private:
     float   float_value_;
     bool    bool_value_;
     char   *pointer_value_;
+    float  *vector_value_;
   } value_ = {.int_value_ = 0};
 
   /// 是否申请并占有内存, 目前对于 CHARS 类型 own_data_ 为true, 其余类型 own_data_ 为false

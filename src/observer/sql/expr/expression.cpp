@@ -409,6 +409,14 @@ AttrType ArithmeticExpr::value_type() const
     return AttrType::INTS;
   }
 
+  if(left_->value_type() == AttrType::VECTORS && right_->value_type() == AttrType::VECTORS &&
+      arithmetic_type_ != Type::DIV) {
+      if(arithmetic_type_ == Type::L2_DISTANCE || arithmetic_type_ == Type::COSINE_DISTANCE || arithmetic_type_ == Type::INNER_PRODUCT) {
+        return AttrType::FLOATS;
+      }
+        return AttrType::VECTORS;
+      }
+
   return AttrType::FLOATS;
 }
 
@@ -440,6 +448,18 @@ RC ArithmeticExpr::calc_value(const Value &left_value, const Value &right_value,
       Value::negative(left_value, value);
     } break;
 
+    case Type::L2_DISTANCE: {
+      Value::l2_distance(left_value, right_value, value);
+    } break;
+
+    case Type::COSINE_DISTANCE: {
+      Value::cosine_distance(left_value, right_value, value);
+    } break;
+
+    case Type::INNER_PRODUCT: {
+      Value::inner_product(left_value, right_value, value);
+    } break;
+    
     default: {
       rc = RC::INTERNAL;
       LOG_WARN("unsupported arithmetic type. %d", arithmetic_type_);
