@@ -360,8 +360,8 @@ RC Table::get_chunk_scanner(ChunkFileScanner &scanner, Trx *trx, ReadWriteMode m
 
 RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, const char *index_name, bool unique)
 {
-  if (common::is_blank(index_name) || 0 == field_metas.empty()) {
-    // LOG_INFO("Invalid input arguments, table name is %s, index_name is blank or attribute_name is blank", name());
+  if (common::is_blank(index_name) || field_metas.empty()) {
+    LOG_INFO("Invalid input arguments, table name is %s, index_name is blank or attribute_name is blank", name());
     return RC::INVALID_ARGUMENT;
   }
 
@@ -369,7 +369,7 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
 
   RC rc = new_index_meta.init(index_name, field_metas, unique);
   if (rc != RC::SUCCESS) {
-    // LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s, field_name:%s", name(), index_name, field_meta->name());
+    LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s", name(), index_name);
     return rc;
   }
 
@@ -377,10 +377,10 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   BplusTreeIndex *index      = new BplusTreeIndex();
   string          index_file = table_index_file(base_dir_.c_str(), name(), index_name);
 
-  rc = index->create(this, index_file.c_str(), new_index_meta,field_metas, unique);
+  rc = index->create(this, index_file.c_str(), new_index_meta, field_metas, unique);
   if (rc != RC::SUCCESS) {
     delete index;
-    // LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file.c_str(), rc, strrc(rc));
+    LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file.c_str(), rc, strrc(rc));
     return rc;
   }
 
@@ -388,7 +388,7 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   RecordFileScanner scanner;
   rc = get_record_scanner(scanner, trx, ReadWriteMode::READ_ONLY);
   if (rc != RC::SUCCESS) {
-    // LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s",  name(), index_name, strrc(rc));
+    LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
     return rc;
   }
 
@@ -396,18 +396,18 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   while (OB_SUCC(rc = scanner.next(record))) {
     rc = index->insert_entry(record.data(), &record.rid());
     if (rc != RC::SUCCESS) {
-      // LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
+      LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",name(), index_name, strrc(rc));
       return rc;
     }
   }
   if (RC::RECORD_EOF == rc) {
     rc = RC::SUCCESS;
   } else {
-    // LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
+    LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
     return rc;
   }
   scanner.close_scan();
-  // LOG_INFO("inserted all records into new index. table=%s, index=%s", name(), index_name);
+  LOG_INFO("inserted all records into new index. table=%s, index=%s", name(), index_name);
 
   indexes_.push_back(index);
 
@@ -415,7 +415,7 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   TableMeta new_table_meta(table_meta_);
   rc = new_table_meta.add_index(new_index_meta);
   if (rc != RC::SUCCESS) {
-    // LOG_ERROR("Failed to add index (%s) on table (%s). error=%d:%s", index_name, name(), rc, strrc(rc));
+    LOG_ERROR("Failed to add index (%s) on table (%s). error=%d:%s", index_name, name(), rc, strrc(rc));
     return rc;
   }
 
@@ -426,11 +426,11 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   fstream fs;
   fs.open(tmp_file, ios_base::out | ios_base::binary | ios_base::trunc);
   if (!fs.is_open()) {
-    // LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s", tmp_file.c_str(), strerror(errno));
+    LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s", tmp_file.c_str(), strerror(errno));
     return RC::IOERR_OPEN;  // 创建索引中途出错，要做还原操作
   }
   if (new_table_meta.serialize(fs) < 0) {
-    // LOG_ERROR("Failed to dump new table meta to file: %s. sys err=%d:%s", tmp_file.c_str(), errno, strerror(errno));
+    LOG_ERROR("Failed to dump new table meta to file: %s. sys err=%d:%s", tmp_file.c_str(), errno, strerror(errno));
     return RC::IOERR_WRITE;
   }
   fs.close();
@@ -440,7 +440,9 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
 
   int ret = rename(tmp_file.c_str(), meta_file.c_str());
   if (ret != 0) {
-    // LOG_ERROR("Failed to rename tmp meta file (%s) to normal meta file (%s) while creating index (%s) on table (%s). ""system error=%d:%s", tmp_file.c_str(), meta_file.c_str(), index_name, name(), errno, strerror(errno));
+    // LOG_ERROR("Failed to rename tmp meta file (%s) to normal meta file (%s) while creating index (%s) on table (%s). "
+    //           "system error=%d:%s",
+    //           tmp_file.c_str(), meta_file.c_str(), index_name, name(), errno, strerror(errno));
     return RC::IOERR_WRITE;
   }
 

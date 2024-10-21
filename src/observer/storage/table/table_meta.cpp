@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 
 static const Json::StaticString FIELD_TABLE_ID("table_id");
 static const Json::StaticString FIELD_TABLE_NAME("table_name");
+static const Json::StaticString RECORD_SIZE("record_size");
 static const Json::StaticString FIELD_STORAGE_FORMAT("storage_format");
 static const Json::StaticString FIELD_FIELDS("fields");
 static const Json::StaticString FIELD_INDEXES("indexes");
@@ -44,8 +45,7 @@ void TableMeta::swap(TableMeta &other) noexcept
 }
 
 RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMeta> *trx_fields,
-                   span<const AttrInfoSqlNode> attributes, StorageFormat storage_format)
-{
+                   span<const AttrInfoSqlNode> attributes, StorageFormat storage_format) {
   if (common::is_blank(name)) {
     LOG_ERROR("Name cannot be empty");
     return RC::INVALID_ARGUMENT;
@@ -87,6 +87,9 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
     }
 
     field_offset += attr_info.length;
+    // if (attr_info.nullable) {
+    //   field_offset += 1; // if an attribute allows null value, one extra byte is allocated to mark where a cell is null or not.
+    // }
   }
 
   record_size_ = field_offset;
@@ -98,8 +101,7 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
   return RC::SUCCESS;
 }
 
-RC TableMeta::add_index(const IndexMeta &index)
-{
+RC TableMeta::add_index(const IndexMeta &index) {
   indexes_.push_back(index);
   return RC::SUCCESS;
 }
@@ -108,14 +110,12 @@ const char *TableMeta::name() const { return name_.c_str(); }
 
 const FieldMeta *TableMeta::trx_field() const { return &fields_[0]; }
 
-span<const FieldMeta> TableMeta::trx_fields() const
-{
+span<const FieldMeta> TableMeta::trx_fields() const {
   return span<const FieldMeta>(fields_.data(), sys_field_num());
 }
 
 const FieldMeta *TableMeta::field(int index) const { return &fields_[index]; }
-const FieldMeta *TableMeta::field(const char *name) const
-{
+const FieldMeta *TableMeta::field(const char *name) const {
   if (nullptr == name) {
     return nullptr;
   }
@@ -127,8 +127,7 @@ const FieldMeta *TableMeta::field(const char *name) const
   return nullptr;
 }
 
-const FieldMeta *TableMeta::find_field_by_offset(int offset) const
-{
+const FieldMeta *TableMeta::find_field_by_offset(int offset) const {
   for (const FieldMeta &field : fields_) {
     if (field.offset() == offset) {
       return &field;
@@ -140,8 +139,7 @@ int TableMeta::field_num() const { return fields_.size(); }
 
 int TableMeta::sys_field_num() const { return static_cast<int>(trx_fields_.size()); }
 
-const IndexMeta *TableMeta::index(const char *name) const
-{
+const IndexMeta *TableMeta::index(const char *name) const {
   for (const IndexMeta &index : indexes_) {
     if (0 == strcmp(index.name(), name)) {
       return &index;
@@ -150,8 +148,9 @@ const IndexMeta *TableMeta::index(const char *name) const
   return nullptr;
 }
 
-const IndexMeta *TableMeta::find_index_by_field(const char *field) const
-{
+
+const IndexMeta *TableMeta::find_index_by_field(const char *field) const {
+
   for (const IndexMeta &index : indexes_) {
     if (index.field_size() == 1 && 0 == strcmp(index.field_name_at(0).c_str(), field)) {
       return &index;
@@ -166,11 +165,11 @@ int TableMeta::index_num() const { return indexes_.size(); }
 
 int TableMeta::record_size() const { return record_size_; }
 
-int TableMeta::serialize(std::ostream &ss) const
-{
+int TableMeta::serialize(std::ostream &ss) const {
   Json::Value table_value;
   table_value[FIELD_TABLE_ID]   = table_id_;
   table_value[FIELD_TABLE_NAME] = name_;
+  table_value[RECORD_SIZE] = record_size_;
   table_value[FIELD_STORAGE_FORMAT] = static_cast<int>(storage_format_);
 
   Json::Value fields_value;
@@ -201,8 +200,7 @@ int TableMeta::serialize(std::ostream &ss) const
   return ret;
 }
 
-int TableMeta::deserialize(std::istream &is)
-{
+int TableMeta::deserialize(std::istream &is) {
   Json::Value             table_value;
   Json::CharReaderBuilder builder;
   std::string             errors;
@@ -242,6 +240,13 @@ int TableMeta::deserialize(std::istream &is)
   }
 
   int32_t storage_format = storage_format_value.asInt();
+  
+  const Json::Value &record_size = table_value[RECORD_SIZE];
+  if (!record_size.isInt()) {
+    LOG_ERROR("Invalid record size. json value=%s", storage_format_value.toStyledString().c_str());
+    return -1;
+  }
+  record_size_ = record_size.asInt();
 
   RC  rc        = RC::SUCCESS;
   int field_num = fields_value.size();
@@ -265,7 +270,7 @@ int TableMeta::deserialize(std::istream &is)
   storage_format_ = static_cast<StorageFormat>(storage_format);
   name_.swap(table_name);
   fields_.swap(fields);
-  record_size_ = fields_.back().offset() + fields_.back().len() - fields_.begin()->offset();
+  //record_size_ = fields_.back().offset() + fields_.back().len() - fields_.begin()->offset();
 
   for (const FieldMeta &field_meta : fields_) {
     if (!field_meta.visible()) {
