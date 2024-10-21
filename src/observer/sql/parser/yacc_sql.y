@@ -162,6 +162,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <expression_list>     expression_list
 %type <expression_list>     group_by
 %type <sql_node>            calc_stmt
+%type <relation_list>       attr_list
 %type <sql_node>            select_stmt
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
@@ -277,18 +278,37 @@ desc_table_stmt:
     ;
 
 create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE
+    CREATE INDEX ID ON ID LBRACE ID attr_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
       CreateIndexSqlNode &create_index = $$->create_index;
       create_index.index_name = $3;
       create_index.relation_name = $5;
-      create_index.attribute_name = $7;
+      if ($8 != nullptr) {
+        create_index.attribute_names.swap(*$8);
+        delete $8;  
+      }
+      create_index.attribute_names.emplace_back($7);
+      std::reverse(create_index.attribute_names.begin(), create_index.attribute_names.end());
       free($3);
       free($5);
       free($7);
     }
     ;
+attr_list:
+  /* empty */
+  {
+    $$ = nullptr;
+  }
+  | COMMA ID attr_list {
+    if ($3 != nullptr) {
+      $$ = $3;
+    } else {
+      $$ = new vector<std::string>;
+    }
+    $$->emplace_back($2);
+    free($2);
+  }
 
 drop_index_stmt:      /*drop index 语句的语法解析树*/
     DROP INDEX ID ON ID

@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
   DEFINE_RC(NOTFOUND)                    \
   DEFINE_RC(EMPTY)                       \
   DEFINE_RC(FULL)                        \
+  DEFINE_RC(INDEX_FIELD_ERROR)                        \
   DEFINE_RC(EXIST)                       \
   DEFINE_RC(NOT_EXIST)                   \
   DEFINE_RC(BUFFERPOOL_OPEN)             \
