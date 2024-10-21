@@ -115,6 +115,10 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         LE
         GE
         NE
+        L2_DISTANCE
+        INNER_PRODUCT
+        COSINE_DISTANCE
+
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -134,12 +138,14 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   char *                                     string;
   int                                        number;
   float                                      floats;
+  std::vector<float> *                       vector;
 }
 
 %token <number> NUMBER
 %token <floats> FLOAT
 %token <string> ID
 %token <string> SSS
+%token <vector> VECTOR_DATA
 //非终结符
 
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
@@ -346,7 +352,11 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      if ($$->type == AttrType::VECTORS) {  // 检查类型是否为 vector_type
+          $$->length = 4 * $4;
+      } else {
+          $$->length = $4;
+      }
       free($1);
     }
     | ID type
@@ -414,7 +424,28 @@ value:
       free(tmp);
       free($1);
     }
-    ;
+    | VECTOR_DATA {
+    // 这里我们已经在词法分析阶段解析并获得了 std::vector<float> 指针
+    Value *value = new Value();
+
+    // 设置 vector 数据，假设 $1 是 std::vector<float> 指针
+    if ($1 != nullptr) {
+        // 获取底层的 float* 数组指针以及元素个数
+        float* vector_data = $1->data();      // 获取底层的 float* 指针
+        size_t vector_size = $1->size();      // 获取元素个数
+
+        // 将 float* 数组指针和大小传递给 set_vector
+        value->set_vector(vector_data, vector_size * sizeof(float));
+
+        // 释放 std::vector<float> 指针的内存
+        delete $1;
+    } else {
+        // yyerror(&@$, NULL, sql_result, scanner, "vector data invalid", SCF_VECTOR);
+        YYABORT;  // 停止解析
+    }
+
+    $$ = value;  // 将结果赋值给解析树
+};
 storage_format:
     /* empty */
     {
@@ -539,6 +570,15 @@ expression:
     }
     | aggr_func_expr {
       $$ = $1;
+    }
+    | L2_DISTANCE LBRACE expression COMMA expression RBRACE {
+        $$ = create_arithmetic_expression(ArithmeticExpr::Type::L2_DISTANCE, $3, $5, sql_string, &@$);
+    }
+    | INNER_PRODUCT LBRACE expression COMMA expression RBRACE {
+        $$ = create_arithmetic_expression(ArithmeticExpr::Type::INNER_PRODUCT, $3, $5, sql_string, &@$);
+    }
+    | COSINE_DISTANCE LBRACE expression COMMA expression RBRACE {
+        $$ = create_arithmetic_expression(ArithmeticExpr::Type::COSINE_DISTANCE, $3, $5, sql_string, &@$);
     }
     // your code here
     ;
