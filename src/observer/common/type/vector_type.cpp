@@ -59,6 +59,7 @@ RC VectorType::multiply(const Value &left, const Value &right, Value &result) co
   float *value = new float[left.length_/4];
   for(int i = 0; i < left.length_/4 ;i++) {
     value[i] = left.value_.vector_value_[i] * right.value_.vector_value_[i];
+    value[i] = round(value[i] * 100) / 100;
   }
   result.set_vector(value, left.length_);
   delete[] value;
@@ -99,7 +100,7 @@ RC VectorType::l2_distance(const Value &left, const Value &right, Value &result)
     
     // 四舍五入到两位小数
     float rounded_distance = std::round(distance * 100.0f) / 100.0f;
-    
+
     // 将结果设置到 result 中
     result.set_float(rounded_distance);
     return RC::SUCCESS;
