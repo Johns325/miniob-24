@@ -74,6 +74,9 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         INDEX
         CALC
         SELECT
+        ALIAS
+        ASC
+        ORDER
         DESC
         SHOW
         SYNC
@@ -141,6 +144,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   float                                      floats;
   bool                                       boolean;
   std::vector<float> *                       vector;
+  std::vector<order_by>*                     order_by_type                 
 }
 
 %token <number> NUMBER
@@ -181,6 +185,10 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <sql_node>            desc_table_stmt
 %type <sql_node>            create_index_stmt
 %type <boolean>             unique_stmt
+%type <string>              alias_stmt
+%type <order_by_type>       order_by
+%type <order_by_type>       order_by_seq
+%type <boolean>             asc_stmt
 %type <sql_node>            drop_index_stmt
 %type <sql_node>            sync_stmt
 %type <sql_node>            begin_stmt
@@ -246,7 +254,15 @@ sync_stmt:
       $$ = new ParsedSqlNode(SCF_SYNC);
     }
     ;
-
+alias_stmt:
+  /* empty */
+  {
+    $$ = nullptr;
+  }
+  | ALIAS ID {
+    $$ = $2;
+  }
+  ;
 begin_stmt:
     TRX_BEGIN  {
       $$ = new ParsedSqlNode(SCF_BEGIN);
@@ -517,7 +533,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM rel_list where group_by
+    SELECT expression_list FROM rel_list where group_by order_by having
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -535,6 +551,9 @@ select_stmt:        /*  select 语句的语法解析树*/
         delete $5;
       }
 
+
+      // TODO reverse order_by array.
+
       if ($6 != nullptr) {
         $$->selection.group_by.swap(*$6);
         delete $6;
@@ -551,17 +570,25 @@ calc_stmt:
     ;
 
 expression_list:
-    expression
+    expression alias_stmt
     {
       $$ = new std::vector<std::unique_ptr<Expression>>;
+      if ($2) {
+        $1->set_alias(std::string($2));
+        free($2);
+      }
       $$->emplace_back($1);
     }
-    | expression COMMA expression_list
+    | expression alias_stmt COMMA expression_list
     {
-      if ($3 != nullptr) {
-        $$ = $3;
+      if ($4 != nullptr) {
+        $$ = $4;
       } else {
         $$ = new std::vector<std::unique_ptr<Expression>>;
+      }
+      if ($2) {
+        $1->set_alias(std::string($2));
+        free($2);
       }
       $$->emplace($$->begin(), $1);
     }
@@ -651,19 +678,30 @@ relation:
     }
     ;
 rel_list:
-    relation {
-      $$ = new std::vector<std::string>();
-      $$->push_back($1);
+    relation alias_stmt {
+      $$ = new std::vector<rel_info>();
+      rel_info r;
+      r.relation_name = $1;
+      if ($2) {
+        r.relation_alias = std::string(#$2);
+        free($2);
+      }
+      $$->push_back(std::move(r));
       free($1);
     }
-    | relation COMMA rel_list {
-      if ($3 != nullptr) {
-        $$ = $3;
+    | relation alias_stmt COMMA rel_list {
+      if ($4 != nullptr) {
+        $$ = $4;
       } else {
         $$ = new std::vector<std::string>;
       }
-
-      $$->insert($$->begin(), $1);
+      rel_info r;
+      r.relation_name = $1;
+      if ($2) {
+        r.relation_alias = std::string(#$2);
+        free($2);
+      }
+      $$->insert($$->begin(), r);
       free($1);
     }
     ;
@@ -761,7 +799,68 @@ group_by:
     {
       $$ = nullptr;
     }
+    rel_attr {
+      // std::vector<std::unique_ptr<Expression>> *
+      auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
+      $$ = new std::vector<std::unique_ptr<Expression>>();
+      $$->emplace_back(field);
+    }
+    | GROUP BY rel_attrs {
+      
+    }
     ;
+
+rel_attrs:
+  rel_attr {
+        // std::vector<std::unique_ptr<Expression>> *
+        auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
+        $$ = new std::vector<std::unique_ptr<Expression>>();
+        $$->emplace_back(field);
+  }
+  | 
+  ;
+having:
+    ;
+
+
+order_by:
+    /* empty */
+    {
+      $$ = nullptr;
+    }
+    ORDER BY order_by_seq {
+      $$ = $3;
+    };
+order_by_seq:
+    ID asc_stmt {
+      $$ = new vector<order_by>;
+      order_by seq;
+      seq.attr_name = $1;
+      free($1);
+      seq.asc = $2;
+      $$->emplace_back(seq);
+    }
+    | ID asc_stmt COMMA order_by_seq {
+      $$ = $4;
+      order_by seq;
+      seq.attr_name = $1;
+      free($1);
+      seq.asc = $2;
+      $$->emplace_back(seq);
+    }
+    ;
+asc_stmt:
+  / * empty */
+  {
+    // default option is asc
+    $$ = true;
+  }
+  ASC {
+    $$ = true;
+  }
+  | DESC {
+    $$ = false;
+  };
 load_data_stmt:
     LOAD DATA INFILE SSS INTO TABLE ID 
     {
