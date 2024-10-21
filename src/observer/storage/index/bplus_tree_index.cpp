@@ -39,14 +39,14 @@ RC BplusTreeIndex::create(Table *table, const char *file_name, const IndexMeta &
   index_handler_.set_unique(unique_index);
   RC rc = index_handler_.create(table->db()->log_handler(), bpm, file_name, types, offsets, key_len);
   if (RC::SUCCESS != rc) {
-    LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, field:%ld, rc:%s",file_name, index_meta.name(), index_meta.field().size(), strrc(rc));
+    // LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, field:%ld, rc:%s",file_name, index_meta.name(), index_meta.field().size(), strrc(rc));
     return rc;
   }
 
   inited_ = true;
   table_  = table;
-  LOG_INFO("Successfully create index, file_name:%s, index:%s, field:%ld",
-    file_name, index_meta.name(), index_meta.field().size());
+  // LOG_INFO("Successfully create index, file_name:%s, index:%s, field:%ld",
+  //   file_name, index_meta.name(), index_meta.field().size());
   return RC::SUCCESS;
 }
 

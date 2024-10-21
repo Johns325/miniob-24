@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/index/bplus_tree.h"
 #include "storage/index/index.h"
+class IndexFileHeader;
 
 /**
  * @brief B+树索引
