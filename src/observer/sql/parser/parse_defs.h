@@ -81,6 +81,22 @@ struct ConditionSqlNode
 struct rel_info {
   std::string relation_name;
   std::string relation_alias;
+  std::vector<ConditionSqlNode> *on_conditions; // join conditions. i.e. A.id = B.id
+  rel_info() = default;
+  ~rel_info() = default;
+  rel_info(rel_info&& other): relation_name(std::move(other.relation_name)), relation_alias(other.relation_alias),on_conditions(other.on_conditions) {
+    other.on_conditions = nullptr;
+  }
+  rel_info& operator=(rel_info&& other) {
+    if (on_conditions) {
+      delete on_conditions;
+      relation_name=std::move(other.relation_name);
+      relation_alias=std::move(other.relation_alias);
+      on_conditions = other.on_conditions;
+      other.on_conditions = nullptr;
+    }
+    return *this;
+  }
 };
 
 

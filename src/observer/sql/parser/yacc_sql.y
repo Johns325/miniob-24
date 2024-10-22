@@ -87,6 +87,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         LBRACE
         RBRACE
         COMMA
+        INNER
+        JOIN
         TRX_BEGIN
         TRX_COMMIT
         TRX_ROLLBACK
@@ -143,8 +145,10 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   int                                        number;
   float                                      floats;
   bool                                       boolean;
+  bool *                                     boolean_ptr;
   std::vector<float> *                       vector;
-  std::vector<order_by>*                     order_by_type                 
+  std::vector<order_by>*                     order_by_type;
+  std::vector<rel_info>*                     rel_list_type;             
 }
 
 %token <number> NUMBER
@@ -168,11 +172,15 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <condition_list>      where
 %type <condition_list>      condition_list
 %type <string>              storage_format
-%type <relation_list>       rel_list
+// %type <relation_list>       rel_list
+%type <rel_list_type>       rel_list
 %type <expression>          expression
 %type <expression>          aggr_func_expr
 %type <expression_list>     expression_list
 %type <expression_list>     group_by
+%type <boolean_ptr>         asc_stmt
+%type <condition_list>      on_stmt
+%type <expression_list>     rel_attrs
 %type <sql_node>            calc_stmt
 %type <relation_list>       attr_list
 %type <sql_node>            select_stmt
@@ -186,9 +194,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <sql_node>            create_index_stmt
 %type <boolean>             unique_stmt
 %type <string>              alias_stmt
-%type <order_by_type>       order_by
 %type <order_by_type>       order_by_seq
-%type <boolean>             asc_stmt
+%type <order_by_type>       order_by
 %type <sql_node>            drop_index_stmt
 %type <sql_node>            sync_stmt
 %type <sql_node>            begin_stmt
@@ -533,7 +540,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM rel_list where group_by order_by having
+    SELECT expression_list FROM rel_list where group_by order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -555,8 +562,14 @@ select_stmt:        /*  select 语句的语法解析树*/
       // TODO reverse order_by array.
 
       if ($6 != nullptr) {
+        // std::reverse($6->begin(),$6->end());
         $$->selection.group_by.swap(*$6);
         delete $6;
+      }
+
+      if ($7 != nullptr) {
+        $$->selection.order_seqs.swap(*$7);
+        delete $7;
       }
     }
     ;
@@ -640,8 +653,12 @@ expression:
         $$ = create_arithmetic_expression(ArithmeticExpr::Type::COSINE_DISTANCE, $3, $5, sql_string, &@$);
     }
     // your code here
+    | aggr_func_expr {
+      $$ = $1;
+    }
     ;
 
+// rules related to aggregation function
 aggr_func_expr:
   ID LBRACE expression RBRACE {
     $$ = create_aggregate_expression($1, $3, sql_string, &@$);
@@ -656,6 +673,7 @@ aggr_func_expr:
     free($1);
     YYERROR;
   }
+  ;
 
 rel_attr:
     ID {
@@ -678,33 +696,58 @@ relation:
     }
     ;
 rel_list:
-    relation alias_stmt {
-      $$ = new std::vector<rel_info>();
-      rel_info r;
-      r.relation_name = $1;
-      if ($2) {
-        r.relation_alias = std::string(#$2);
-        free($2);
-      }
-      $$->push_back(std::move(r));
-      free($1);
+  relation alias_stmt {
+    $$ = new std::vector<rel_info>();
+    rel_info r;
+    r.relation_name = $1;
+    if ($2) {
+      r.relation_alias = std::string($2);
+      free($2);
     }
-    | relation alias_stmt COMMA rel_list {
-      if ($4 != nullptr) {
-        $$ = $4;
-      } else {
-        $$ = new std::vector<std::string>;
-      }
-      rel_info r;
-      r.relation_name = $1;
-      if ($2) {
-        r.relation_alias = std::string(#$2);
-        free($2);
-      }
-      $$->insert($$->begin(), r);
-      free($1);
+    $$->push_back(std::move(r));
+    free($1);
+  }
+  | relation alias_stmt COMMA rel_list {
+    // if ($4 != nullptr) {
+    //   $$ = $4;
+    // } else {
+    //   $$ = new std::vector<std::string>;
+    // }
+    $$ = $4;
+    rel_info r;
+    r.relation_name = $1;
+    if ($2) {
+      r.relation_alias = std::string($2);
+      free($2);
     }
-    ;
+    $$->insert($$->begin(), std::move(r));
+    free($1);
+  }
+  | relation alias_stmt INNER JOIN on_stmt rel_list {
+    $$ = $6;
+    rel_info r;
+    r.relation_name = $1;
+    free($1);
+    if ($2) {
+      r.relation_alias = std::string($2);
+      free($2);
+    }
+    if ($5) {
+      r.on_conditions = $5;
+    }
+    $$->insert($$->begin(), std::move(r));
+  }
+  ;
+
+on_stmt:
+  /* empty */ {
+    // cross product
+    $$ = nullptr;
+  }
+  | ON condition_list {
+    $$ = $2;
+  }
+  ;
 
 where:
     /* empty */
@@ -799,28 +842,27 @@ group_by:
     {
       $$ = nullptr;
     }
-    rel_attr {
-      // std::vector<std::unique_ptr<Expression>> *
-      auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
-      $$ = new std::vector<std::unique_ptr<Expression>>();
-      $$->emplace_back(field);
-    }
     | GROUP BY rel_attrs {
-      
+      $$ = $3;
     }
     ;
 
 rel_attrs:
   rel_attr {
-        // std::vector<std::unique_ptr<Expression>> *
-        auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
-        $$ = new std::vector<std::unique_ptr<Expression>>();
-        $$->emplace_back(field);
+    // std::vector<std::unique_ptr<Expression>> *
+    auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
+    $$ = new std::vector<std::unique_ptr<Expression>>();
+    $$->emplace_back(field);
   }
-  | 
+  | rel_attr COMMA rel_attrs {
+    $$ = $3;
+    auto field = new UnboundFieldExpr($1->relation_name,$1->attribute_name);
+    $$->emplace_back(field);
+    delete $1;
+  }
   ;
-having:
-    ;
+// having:
+//     ;
 
 
 order_by:
@@ -828,16 +870,18 @@ order_by:
     {
       $$ = nullptr;
     }
-    ORDER BY order_by_seq {
+    | ORDER BY order_by_seq {
       $$ = $3;
-    };
+    }
+    ;
 order_by_seq:
     ID asc_stmt {
       $$ = new vector<order_by>;
       order_by seq;
       seq.attr_name = $1;
       free($1);
-      seq.asc = $2;
+      seq.asc = *($2);
+      delete $2;
       $$->emplace_back(seq);
     }
     | ID asc_stmt COMMA order_by_seq {
@@ -845,22 +889,25 @@ order_by_seq:
       order_by seq;
       seq.attr_name = $1;
       free($1);
-      seq.asc = $2;
+      seq.asc = *($2);
+      delete $2;
       $$->emplace_back(seq);
     }
     ;
+
 asc_stmt:
-  / * empty */
+  /* empty */
   {
     // default option is asc
-    $$ = true;
+    $$ = new bool(true);
   }
-  ASC {
-    $$ = true;
+  | ASC {
+    $$ = new bool(true);
   }
   | DESC {
-    $$ = false;
+    $$ = new bool(false);
   };
+
 load_data_stmt:
     LOAD DATA INFILE SSS INTO TABLE ID 
     {

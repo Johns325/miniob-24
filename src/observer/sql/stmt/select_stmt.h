@@ -25,7 +25,8 @@ class FieldMeta;
 class FilterStmt;
 class Db;
 class Table;
-
+class rel_info;
+class Expression;
 /**
  * @brief 表示select语句
  * @ingroup Statement
@@ -40,7 +41,9 @@ public:
 
 public:
   static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt);
-
+  static RC bind_from(std::vector<rel_info>& relations);
+  static RC bind_select(std::vector<std::unique_ptr<Expression>>& relations);
+private:
 public:
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
