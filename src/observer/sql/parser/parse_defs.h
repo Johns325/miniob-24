@@ -81,10 +81,11 @@ struct ConditionSqlNode
 struct rel_info {
   std::string relation_name;
   std::string relation_alias;
-  std::vector<ConditionSqlNode> *on_conditions; // join conditions. i.e. A.id = B.id
+  std::vector<Expression*> *on_conditions{nullptr}; // join conditions. i.e. A.id = B.id
   rel_info() = default;
   ~rel_info() = default;
-  rel_info(rel_info&& other): relation_name(std::move(other.relation_name)), relation_alias(other.relation_alias),on_conditions(other.on_conditions) {
+  rel_info(rel_info&& other): relation_name(std::move(other.relation_name)), relation_alias(other.relation_alias) {
+    on_conditions =other.on_conditions;
     other.on_conditions = nullptr;
   }
   rel_info& operator=(rel_info&& other) {
@@ -120,7 +121,7 @@ struct SelectSqlNode
 {
   std::vector<std::unique_ptr<Expression>> expressions;  ///< 查询的表达式
   std::vector<rel_info>                    relations;    ///< 查询的表
-  std::vector<ConditionSqlNode>            conditions;   ///< 查询条件，使用AND串联起来多个条件
+  vector<Expression*>            conditions;   ///< 查询条件，使用AND串联起来多个条件
   std::vector<std::unique_ptr<Expression>> group_by;     ///< group by clause
   std::vector<order_by>                    order_seqs;
 };
@@ -152,7 +153,7 @@ struct InsertSqlNode
 struct DeleteSqlNode
 {
   std::string                   relation_name;  ///< Relation to delete from
-  std::vector<ConditionSqlNode> conditions;
+  std::vector<Expression*> conditions;
 };
 
 /**

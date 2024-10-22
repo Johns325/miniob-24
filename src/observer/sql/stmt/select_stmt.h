@@ -27,6 +27,11 @@ class Db;
 class Table;
 class rel_info;
 class Expression;
+class ExpressionBinder;
+class BinderContext;
+class ConjunctionExpr;
+class UnboundFieldExpr;
+
 /**
  * @brief 表示select语句
  * @ingroup Statement
@@ -41,9 +46,9 @@ public:
 
 public:
   static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt);
-  static RC bind_from(std::vector<rel_info>& relations);
-  static RC bind_select(std::vector<std::unique_ptr<Expression>>& relations);
+  
 private:
+  
 public:
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
@@ -57,3 +62,10 @@ private:
   FilterStmt                              *filter_stmt_ = nullptr;
   std::vector<std::unique_ptr<Expression>> group_by_;
 };
+
+
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relations, std::unordered_map<string, Table*>&table_map, std::unordered_map<string, string>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
+RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& relations, vector<unique_ptr<Expression>>&bound_expressions);
+RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs);
+RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, std::string>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
+RC bind_where(ExpressionBinder* binder, std::vector<Expression*>& expressions, vector<unique_ptr<Expression>>&bound_expressions);

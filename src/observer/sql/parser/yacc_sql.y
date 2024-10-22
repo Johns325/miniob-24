@@ -129,7 +129,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
   ParsedSqlNode *                            sql_node;
-  ConditionSqlNode *                         condition;
+  Expression *                          condition;
   Value *                                    value;
   enum CompOp                                comp;
   RelAttrSqlNode *                           rel_attr;
@@ -138,7 +138,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   Expression *                               expression;
   std::vector<std::unique_ptr<Expression>> * expression_list;
   std::vector<Value> *                       value_list;
-  std::vector<ConditionSqlNode> *            condition_list;
+  std::vector<Expression*> *                 condition_list;
   std::vector<RelAttrSqlNode> *              rel_attr_list;
   std::vector<std::string> *                 relation_list;
   char *                                     string;
@@ -531,46 +531,59 @@ update_stmt:      /*  update 语句的语法解析树*/
       $$->update.relation_name = $2;
       $$->update.attribute_name = $4;
       $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
-      }
+      // TODO 
+      // if ($7 != nullptr) {
+      //   $$->update.conditions.swap(*$7);
+      //   delete $7;
+      // }
       free($2);
       free($4);
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM rel_list where group_by order_by
+    SELECT expression_list FROM relation alias_stmt rel_list where group_by order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
         $$->selection.expressions.swap(*$2);
         delete $2;
       }
+      auto &selection = $$->selection;
 
-      if ($4 != nullptr) {
-        $$->selection.relations.swap(*$4);
-        delete $4;
+      if ($6 != nullptr) {
+        selection.relations.swap(*$6);
+        delete $6;
       }
+      rel_info r;
+      r.relation_name = $4;
+      if ($5) {
+        r.relation_alias = $5;
+        free($5);
+      }
+      free($4);
+      selection.relations.emplace_back(std::move(r));
+      // reverse because every time we add a relation at the end.
+      std::reverse(selection.relations.begin(),selection.relations.end());
 
-      if ($5 != nullptr) {
-        $$->selection.conditions.swap(*$5);
-        delete $5;
-      }
+      // if ($5 != nullptr) {
+      //   std::reverse($5->begin(), $5->end());
+      //   $$->selection.conditions.swap(*$5);
+      //   delete $5;
+      // }
 
 
       // TODO reverse order_by array.
 
-      if ($6 != nullptr) {
-        // std::reverse($6->begin(),$6->end());
-        $$->selection.group_by.swap(*$6);
-        delete $6;
-      }
+      // if ($6 != nullptr) {
+      //   // std::reverse($6->begin(),$6->end());
+      //   $$->selection.group_by.swap(*$6);
+      //   delete $6;
+      // }
 
-      if ($7 != nullptr) {
-        $$->selection.order_seqs.swap(*$7);
-        delete $7;
-      }
+      // if ($7 != nullptr) {
+      //   $$->selection.order_seqs.swap(*$7);
+      //   delete $7;
+      // }
     }
     ;
 calc_stmt:
@@ -653,9 +666,9 @@ expression:
         $$ = create_arithmetic_expression(ArithmeticExpr::Type::COSINE_DISTANCE, $3, $5, sql_string, &@$);
     }
     // your code here
-    | aggr_func_expr {
-      $$ = $1;
-    }
+    // | aggr_func_expr {
+    //   $$ = $1;
+    // }
     ;
 
 // rules related to aggregation function
@@ -696,41 +709,29 @@ relation:
     }
     ;
 rel_list:
-  relation alias_stmt {
-    $$ = new std::vector<rel_info>();
+  /* empty */ {
+    $$ = nullptr;
+  }
+  | COMMA relation alias_stmt rel_list {
+    $$ = ($4 != nullptr ? $4 : new std::vector<rel_info>());
+  
     rel_info r;
-    r.relation_name = $1;
-    if ($2) {
-      r.relation_alias = std::string($2);
-      free($2);
+    r.relation_name = $2;
+    if ($3) {
+      r.relation_alias = std::string($3);
+      free($3);
     }
     $$->push_back(std::move(r));
-    free($1);
+    free($2);
   }
-  | relation alias_stmt COMMA rel_list {
-    // if ($4 != nullptr) {
-    //   $$ = $4;
-    // } else {
-    //   $$ = new std::vector<std::string>;
-    // }
-    $$ = $4;
+  | INNER JOIN relation alias_stmt on_stmt rel_list {
+    $$ = ($6 != nullptr ? $6 : new std::vector<rel_info>());
     rel_info r;
-    r.relation_name = $1;
-    if ($2) {
-      r.relation_alias = std::string($2);
-      free($2);
-    }
-    $$->insert($$->begin(), std::move(r));
-    free($1);
-  }
-  | relation alias_stmt INNER JOIN on_stmt rel_list {
-    $$ = $6;
-    rel_info r;
-    r.relation_name = $1;
-    free($1);
-    if ($2) {
-      r.relation_alias = std::string($2);
-      free($2);
+    r.relation_name = $3;
+    free($3);
+    if ($4) {
+      r.relation_alias = std::string($4);
+      free($4);
     }
     if ($5) {
       r.on_conditions = $5;
@@ -764,65 +765,71 @@ condition_list:
       $$ = nullptr;
     }
     | condition {
-      $$ = new std::vector<ConditionSqlNode>;
-      $$->emplace_back(*$1);
-      delete $1;
+      $$ = new std::vector<Expression*>;
+      $$->emplace_back($1);
+      // delete $1;
     }
     | condition AND condition_list {
       $$ = $3;
-      $$->emplace_back(*$1);
-      delete $1;
+      $$->emplace_back($1);
+      // delete $1;
     }
     ;
 condition:
-    rel_attr comp_op value
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
-      $$->left_attr = *$1;
-      $$->right_is_attr = 0;
-      $$->right_value = *$3;
-      $$->comp = $2;
-
-      delete $1;
-      delete $3;
+    expression comp_op expression {
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right($3);
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
-    | value comp_op value 
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
-      $$->left_value = *$1;
-      $$->right_is_attr = 0;
-      $$->right_value = *$3;
-      $$->comp = $2;
+    
+    // rel_attr comp_op value
+    // {
+    //   $$ = new ConditionSqlNode;
+    //   $$->left_is_attr = 1;
+    //   $$->left_attr = *$1;
+    //   $$->right_is_attr = 0;
+    //   $$->right_value = *$3;
+    //   $$->comp = $2;
 
-      delete $1;
-      delete $3;
-    }
-    | rel_attr comp_op rel_attr
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
-      $$->left_attr = *$1;
-      $$->right_is_attr = 1;
-      $$->right_attr = *$3;
-      $$->comp = $2;
+    //   delete $1;
+    //   delete $3;
+    // }
+    // | value comp_op value 
+    // {
+    //   $$ = new ConditionSqlNode;
+    //   $$->left_is_attr = 0;
+    //   $$->left_value = *$1;
+    //   $$->right_is_attr = 0;
+    //   $$->right_value = *$3;
+    //   $$->comp = $2;
 
-      delete $1;
-      delete $3;
-    }
-    | value comp_op rel_attr
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
-      $$->left_value = *$1;
-      $$->right_is_attr = 1;
-      $$->right_attr = *$3;
-      $$->comp = $2;
+    //   delete $1;
+    //   delete $3;
+    // }
+    // | rel_attr comp_op rel_attr
+    // {
+    //   $$ = new ConditionSqlNode;
+    //   $$->left_is_attr = 1;
+    //   $$->left_attr = *$1;
+    //   $$->right_is_attr = 1;
+    //   $$->right_attr = *$3;
+    //   $$->comp = $2;
 
-      delete $1;
-      delete $3;
-    }
+    //   delete $1;
+    //   delete $3;
+    // }
+    // | value comp_op rel_attr
+    // {
+    //   $$ = new ConditionSqlNode;
+    //   $$->left_is_attr = 0;
+    //   $$->left_value = *$1;
+    //   $$->right_is_attr = 1;
+    //   $$->right_attr = *$3;
+    //   $$->comp = $2;
+
+    //   delete $1;
+    //   delete $3;
+    // }
     ;
 
 comp_op:

@@ -342,7 +342,7 @@ RC ExpressionBinder::bind_arithmetic_expression(
     return rc;
   }
 
-  if (child_bound_expressions.size() != 1) {
+  if (child_bound_expressions.size() != 1 && arithmetic_expr->arithmetic_type() != ArithmeticExpr::Type::NEGATIVE) {
     LOG_WARN("invalid right children number of comparison expression: %d", child_bound_expressions.size());
     return RC::INVALID_ARGUMENT;
   }
