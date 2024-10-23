@@ -73,6 +73,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         TABLES
         INDEX
         CALC
+        null
         SELECT
         ALIAS
         ASC
@@ -164,6 +165,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <value>               value
 %type <value>               insert_val
 %type <number>              number
+%type <number>              null_def
 %type <string>              relation
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
@@ -403,7 +405,7 @@ attr_def_list:
     ;
     
 attr_def:
-    ID type LBRACE number RBRACE 
+    ID type LBRACE number RBRACE null_def
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
@@ -414,16 +416,29 @@ attr_def:
           $$->length = $4;
       }
       free($1);
+      $$->nullable = ($6 == 1);
     }
-    | ID type
+    | ID type null_def
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = 4;
       free($1);
+      $$->nullable = ($3 == 1);
     }
     ;
+null_def: // 0 stands not null and 1 stands for nullable
+  /* empty */
+  {
+    $$ = 0;
+  }
+  | null {
+    $$ = 1;
+  }
+  | NOT null {
+    $$ = 1;
+  }
 number:
     NUMBER {$$ = $1;}
     ;

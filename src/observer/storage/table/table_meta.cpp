@@ -80,16 +80,16 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
     const AttrInfoSqlNode &attr_info = attributes[i];
     // `i` is the col_id of fields[i]
     rc = fields_[i + trx_field_num].init(
-      attr_info.name.c_str(), attr_info.type, field_offset, attr_info.length, true /*visible*/, i);
+      attr_info.name.c_str(), attr_info.type, field_offset, attr_info.length, true /*visible*/, i, attr_info.nullable);
     if (OB_FAIL(rc)) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
       return rc;
     }
 
     field_offset += attr_info.length;
-    // if (attr_info.nullable) {
-    //   field_offset += 1; // if an attribute allows null value, one extra byte is allocated to mark where a cell is null or not.
-    // }
+    if (attr_info.nullable) {
+      field_offset += 1; // if an attribute allows null value, one extra byte is allocated to mark where a cell is null or not.
+    }
   }
 
   record_size_ = field_offset;
@@ -148,6 +148,28 @@ const IndexMeta *TableMeta::index(const char *name) const {
   return nullptr;
 }
 
+const IndexMeta *TableMeta::find_index_by_field(std::vector<const char *>& field_names) const {
+  
+  // TODO 
+  return nullptr;
+
+
+  // for (const IndexMeta& index : indexes_)  {
+  //   if (index.field_size() == field_names.size()) {
+  //     bool found{false};
+  //     for (size_t i = 0; i < index.field_size(); i++) {
+  //       if (0 != strcmp(index.field_name_at(i).c_str(), field_names[i])) {
+  //         found = true;
+  //         continue;
+  //       }
+  //     }
+  //     if (found) {
+  //       return &index;
+  //     }
+  //   }
+  // }
+  // return nullptr;
+}
 
 const IndexMeta *TableMeta::find_index_by_field(const char *field) const {
 
