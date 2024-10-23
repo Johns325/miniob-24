@@ -252,14 +252,14 @@ RC LogicalPlanGenerator::create_plan(InsertStmt *insert_stmt, unique_ptr<Logical
 RC LogicalPlanGenerator::create_plan(DeleteStmt *delete_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
   Table                      *table       = delete_stmt->table();
-  FilterStmt                 *filter_stmt = delete_stmt->filter_stmt();
+  
   unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, ReadWriteMode::READ_WRITE));
 
   unique_ptr<LogicalOperator> predicate_oper;
 
-  RC rc = create_plan(filter_stmt, predicate_oper);
-  if (rc != RC::SUCCESS) {
-    return rc;
+  if (!delete_stmt->expressions_.empty()) {
+    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(delete_stmt->expressions_)));
+    predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
 
   unique_ptr<LogicalOperator> delete_oper(new DeleteLogicalOperator(table));
@@ -272,7 +272,7 @@ RC LogicalPlanGenerator::create_plan(DeleteStmt *delete_stmt, unique_ptr<Logical
   }
 
   logical_operator = std::move(delete_oper);
-  return rc;
+  return RC::SUCCESS;
 }
 
 RC LogicalPlanGenerator::create_plan(ExplainStmt *explain_stmt, unique_ptr<LogicalOperator> &logical_operator)
@@ -295,12 +295,12 @@ RC LogicalPlanGenerator::create_plan(ExplainStmt *explain_stmt, unique_ptr<Logic
 RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
   
   auto table = update_stmt->table();
-  auto filter = update_stmt->filter();
+  
   UptrLogOper table_scan(new TableGetLogicalOperator(table, ReadWriteMode::READ_WRITE));
   UptrLogOper pred_oper;
-  auto rc = create_plan(filter, pred_oper);
-  if (rc != RC::SUCCESS) {
-    return rc;
+  if (!update_stmt->expressions_.empty()) {
+    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(update_stmt->expressions_)));
+    pred_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
   UptrLogOper update_oper (new UpdateLogicalOperator(table, update_stmt->attr_name(), update_stmt->value_amount(), std::move(update_stmt->values())));
   if (pred_oper) {

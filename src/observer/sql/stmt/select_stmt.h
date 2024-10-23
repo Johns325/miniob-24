@@ -42,8 +42,8 @@ class SelectStmt : public Stmt
 public:
   friend class LogicalPlanGenerator;
   SelectStmt() = default;
-  SelectStmt(std::vector<Table*>&& tables, std::vector<std::unique_ptr<ConjunctionExpr>>&&join_expres,std::vector<std::unique_ptr<Expression>>&& query_expressions, std::vector<std::unique_ptr<Expression>>&& condition_expressions)
-  : tables_(std::move(tables)),join_expres_(std::move(join_expres)),query_expressions_(std::move(query_expressions)),condition_expressions_(std::move(condition_expressions)) {}
+  SelectStmt(std::vector<Table*>&& tables, std::vector<std::unique_ptr<ConjunctionExpr>>&&join_expres,std::vector<std::unique_ptr<Expression>>&& query_expressions, std::vector<std::unique_ptr<Expression>>&& condition_expressions, std::vector<std::unique_ptr<Expression>>&& group_by_expressions)
+  : tables_(std::move(tables)),join_expres_(std::move(join_expres)),query_expressions_(std::move(query_expressions)),condition_expressions_(std::move(condition_expressions)), group_by_(std::move(group_by_expressions)) {}
   ~SelectStmt() override;
 
   StmtType type() const override { return StmtType::SELECT; }
@@ -76,3 +76,4 @@ RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>
 RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs);
 RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, std::string>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
 RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
+RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* expressions, vector<unique_ptr<Expression>>&bound_expressions);

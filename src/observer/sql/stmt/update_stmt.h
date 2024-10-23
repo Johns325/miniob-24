@@ -27,9 +27,10 @@ class FieldMeta;
 class UpdateStmt : public Stmt
 {
 public:
+  friend class LogicalPlanGenerator;
   using value_vector = std::vector<std::unique_ptr<Value>>;
   UpdateStmt() = default;
-  UpdateStmt(Table *table, std::string attr_name, int value_amount, FilterStmt* filter, Value* value);
+  UpdateStmt(Table *table, std::string attr_name, int value_amount, std::vector<unique_ptr<Expression>>&&exprs, Value* values);
 
 public:
   static RC create(Db *db, const UpdateSqlNode &update_sql, Stmt *&stmt);
@@ -37,7 +38,7 @@ public:
 public:
   Table *table() const { return table_; }
   auto attr_name() -> std::string { return attr_name_; }
-  auto filter() -> FilterStmt* { return filter_;}
+  // auto filter() -> FilterStmt* { return filter_;}
   value_vector &values()  { return values_; }
   int    value_amount() const { return value_amount_; }
 
@@ -45,6 +46,6 @@ private:
   Table                      *table_{nullptr};
   std::string                 attr_name_;
   int                         value_amount_{0};
-  FilterStmt                 *filter_;
+  std::vector<unique_ptr<Expression>> expressions_;
   value_vector                values_;
 };

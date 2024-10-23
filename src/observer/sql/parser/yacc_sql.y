@@ -534,8 +534,7 @@ delete_stmt:    /*  delete 语句的语法解析树*/
       $$ = new ParsedSqlNode(SCF_DELETE);
       $$->deletion.relation_name = $3;
       if ($4 != nullptr) {
-        $$->deletion.conditions.swap(*$4);
-        delete $4;
+        $$->deletion.conditions = $4;
       }
       free($3);
     }
@@ -548,10 +547,9 @@ update_stmt:      /*  update 语句的语法解析树*/
       $$->update.attribute_name = $4;
       $$->update.value = *$6;
       // TODO 
-      // if ($7 != nullptr) {
-      //   $$->update.conditions.swap(*$7);
-      //   delete $7;
-      // }
+      if ($7 != nullptr) {
+        $$->update.conditions= $7;
+      }
       free($2);
       free($4);
     }
@@ -580,34 +578,18 @@ select_stmt:        /*  select 语句的语法解析树*/
           
           selection.relations.emplace_back(std::move((*$6)[i]));
         }
-        // selection.relations.swap(*$6);
-        // delete $6;
         printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free($4);
-      // selection.relations.emplace_back(std::move(r));
-      // // reverse because every time we add a relation at the end.
-      // std::reverse(selection.relations.begin(),selection.relations.end());
-
+      
       // where 
       if ($7 != nullptr) {
         selection.conditions = $7;
       }
     
-
-
-      // TODO reverse order_by array.
-
-      // if ($6 != nullptr) {
-      //   // std::reverse($6->begin(),$6->end());
-      //   $$->selection.group_by.swap(*$6);
-      //   delete $6;
-      // }
-
-      // if ($7 != nullptr) {
-      //   $$->selection.order_seqs.swap(*$7);
-      //   delete $7;
-      // }
+      if ($8 != nullptr) {
+        selection.group_by = $8;
+      }
     }
     ;
 calc_stmt:

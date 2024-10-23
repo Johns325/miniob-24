@@ -17,15 +17,15 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/db/db.h"
 #include "storage/table/table.h"
-
-DeleteStmt::DeleteStmt(Table *table, FilterStmt *filter_stmt) : table_(table), filter_stmt_(filter_stmt) {}
+#include "sql/parser/expression_binder.h"
+DeleteStmt::DeleteStmt(Table *table, std::vector<unique_ptr<Expression>>&&exprs) : table_(table), expressions_(std::move(exprs)) {}
 
 DeleteStmt::~DeleteStmt()
 {
-  if (nullptr != filter_stmt_) {
-    delete filter_stmt_;
-    filter_stmt_ = nullptr;
-  }
+  // if (nullptr != expressions_) {
+  //   delete filter_stmt_;
+  //   filter_stmt_ = nullptr;
+  // }
 }
 
 RC DeleteStmt::create(Db *db, const DeleteSqlNode &delete_sql, Stmt *&stmt)
@@ -45,17 +45,21 @@ RC DeleteStmt::create(Db *db, const DeleteSqlNode &delete_sql, Stmt *&stmt)
 
   std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
+  BinderContext ctx;
+  ctx.add_table(table);
+  ExpressionBinder binder(ctx);
+  vector<unique_ptr<Expression>> bound_where_expressions;
+  if (delete_sql.conditions != nullptr && !delete_sql.conditions->empty()) {
+    for (auto expr : *delete_sql.conditions) {
+      std::unique_ptr<Expression> expr_ptr(expr);
+      auto rc = binder.bind_expression(expr_ptr, bound_where_expressions);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+    }
+  }
 
-  FilterStmt *filter_stmt = nullptr;
-  // TODO 
-  RC rc = RC::SUCCESS;
-  // RC          rc          = FilterStmt::create(
-  //     db, table, &table_map, delete_sql.conditions.data(), static_cast<int>(delete_sql.conditions.size()), filter_stmt);
-  // if (rc != RC::SUCCESS) {
-  //   LOG_WARN("failed to create filter statement. rc=%d:%s", rc, strrc(rc));
-  //   return rc;
-  // }
 
-  stmt = new DeleteStmt(table, filter_stmt);
-  return rc;
+  stmt = new DeleteStmt(table, std::move(bound_where_expressions));
+  return RC::SUCCESS;
 }

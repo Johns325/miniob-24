@@ -27,11 +27,12 @@ class FilterStmt;
 class DeleteStmt : public Stmt
 {
 public:
-  DeleteStmt(Table *table, FilterStmt *filter_stmt);
+  friend class LogicalPlanGenerator;
+  DeleteStmt(Table *table, std::vector<unique_ptr<Expression>>&&exprs);
   ~DeleteStmt() override;
 
   Table      *table() const { return table_; }
-  FilterStmt *filter_stmt() const { return filter_stmt_; }
+  
 
   StmtType type() const override { return StmtType::DELETE; }
 
@@ -40,5 +41,5 @@ public:
 
 private:
   Table      *table_       = nullptr;
-  FilterStmt *filter_stmt_ = nullptr;
+  std::vector<unique_ptr<Expression>> expressions_;
 };

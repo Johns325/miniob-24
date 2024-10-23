@@ -174,6 +174,20 @@ RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relatio
   return RC::SUCCESS;
 }
 
+RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* expressions, vector<unique_ptr<Expression>>&bound_expressions) {
+  if (nullptr == expressions) {
+    return RC::SUCCESS;
+  }
+  for (auto &expression : *expressions) {
+    RC rc = binder->bind_expression(expression, bound_expressions);
+    if (OB_FAIL(rc)) {
+      LOG_INFO("bind expression failed. rc=%s", strrc(rc));
+      return rc;
+    }
+  } 
+  return RC::SUCCESS;
+}
+
 // bind_from
 // bind_select
 // bind_where
@@ -209,14 +223,17 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   }
 
   /* ******************************************************{bind_where}*******************************************************************/ 
-  vector<unique_ptr<Expression>> bound_where_expressions; // 可以直接对给Predicate Operator
+  vector<unique_ptr<Expression>> bound_where_expressions; // 可以直接丢给Predicate Operator
   if (rc = bind_where(expression_binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
     return rc;
   }
   // actually we can convert all expressions in bound_where_expressions to ComparisonExprs
   
-
-  auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions));
+  vector<unique_ptr<Expression>> bound_group_by_expressions; // 可以直接丢给Predicate Operator
+  if (rc = bind_group_by(expression_binder.get(), select_sql.group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
+    return rc;
+  }
+  auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions));
   stmt = sel_stmt;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'
