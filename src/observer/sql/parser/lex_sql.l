@@ -139,9 +139,7 @@ QUOTE            [\'\"]
 
 
 
-([ \t]|")")\-{DIGIT}+       { yylval->number = atoi(yytext + 1); RETURN_TOKEN(NUMBER); }
 
-([ \t]|")")\-{DIGIT}+{DOT}{DIGIT}+ { yylval->floats = atof(yytext + 1); RETURN_TOKEN(FLOAT); }
 
 {DIGIT}+                           {yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);}
 

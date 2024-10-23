@@ -162,6 +162,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <number>              type
 %type <condition>           condition
 %type <value>               value
+%type <value>               insert_val
 %type <number>              number
 %type <string>              relation
 %type <comp>                comp_op
@@ -434,7 +435,7 @@ type:
     | VECTOR_T { $$ = static_cast<int>(AttrType::VECTORS); }
     ;
 insert_stmt:        /*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE 
+    INSERT INTO ID VALUES LBRACE insert_val value_list RBRACE 
     {
       $$ = new ParsedSqlNode(SCF_INSERT);
       $$->insertion.relation_name = $3;
@@ -449,12 +450,14 @@ insert_stmt:        /*insert   语句的语法解析树*/
     }
     ;
 
+
+
 value_list:
     /* empty */
     {
       $$ = nullptr;
     }
-    | COMMA value value_list  { 
+    | COMMA insert_val value_list  { 
       if ($3 != nullptr) {
         $$ = $3;
       } else {
@@ -464,6 +467,19 @@ value_list:
       delete $2;
     }
     ;
+insert_val:
+  value  {
+    $$ = $1;
+  }
+  | '-' value {
+    $$ = $2;
+    if ($$->attr_type() == AttrType::INTS) {
+      $$->set_int($$->get_int() *(-1));
+    } else if ($$->attr_type() == AttrType::FLOATS) {
+      $$->set_float($$->get_float() *(-1));
+    }
+  }
+  ;
 value:
     NUMBER {
       $$ = new Value((int)$1);
