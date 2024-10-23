@@ -54,6 +54,12 @@ RC ExpressionIterator::iterate_child_expr(Expression &expr, function<RC(unique_p
       auto &arithmetic_expr = static_cast<ArithmeticExpr &>(expr);
       rc = callback(arithmetic_expr.left());
       if (OB_SUCC(rc)) {
+        if (arithmetic_expr.right().get() == nullptr) {
+          if (arithmetic_expr.arithmetic_type() != ArithmeticExpr::Type::NEGATIVE) {
+            return RC::INTERNAL;
+          }
+          return RC::SUCCESS;
+        }
         rc = callback(arithmetic_expr.right());
       }
     } break;

@@ -123,7 +123,7 @@ public:
    * @brief 用于 ComparisonExpr 获得比较结果 `select`。
    */
   virtual RC eval(Chunk &chunk, std::vector<uint8_t> &select) { return RC::UNIMPLEMENTED; }
-
+  virtual std::string to_string() const {return "";}
 protected:
   /**
    * @brief 表达式在下层算子返回的 chunk 中的位置
@@ -151,7 +151,7 @@ public:
   RC get_value(const Tuple &tuple, Value &value) const override { return RC::UNIMPLEMENTED; }  // 不需要实现
 
   const char *table_name() const { return table_name_.c_str(); }
-
+  std::string to_string() const override { return "[star:*]"; }
 private:
   std::string table_name_;
 };
@@ -172,7 +172,12 @@ public:
 
   const char *table_name() const { return table_name_.c_str(); }
   const char *field_name() const { return field_name_.c_str(); }
-
+  std::string to_string() const override { 
+    stringstream ss;
+    if (!table_name_.empty()) ss << table_name_ << '.';
+    if (!field_name_.empty()) ss << field_name_;
+    return ss.str();
+  }
 private:
   std::string table_name_;
   std::string field_name_;
@@ -240,6 +245,7 @@ public:
 
   void         get_value(Value &value) const { value = value_; }
   const Value &get_value() const { return value_; }
+  Value &get_value() { return value_; }
 
 private:
   Value value_;

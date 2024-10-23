@@ -81,6 +81,8 @@ public:
   const std::vector<FilterUnit *> &filter_units() const { return filter_units_; }
 
 public:
+  // new rule. 传入的vector<expression>
+  // static RC create(Db *db, std::vector<std::unique_ptr<Expression>>& expressions, )
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
       const ConditionSqlNode *conditions, int condition_num, FilterStmt *&stmt);
 

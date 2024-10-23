@@ -79,10 +79,8 @@ QUOTE            [\'\"]
 /* yylval 就可以认为是 yacc 中 %union 定义的结构体(union 结构) */
 %%
 
-{WHITE_SAPCE}                                        // ignore whitespace
-\n                                                   ;
-
-
+{WHITE_SAPCE}                                        // ignore whitespace 
+\n                                                   ; 
 (\'?\[[^]]*\]\'?) {
     int offset = 0;
     if (yytext[0] == '\'') {
@@ -141,8 +139,14 @@ QUOTE            [\'\"]
 
 
 
-[\-]?{DIGIT}+                           yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
-[\-]?{DIGIT}+{DOT}{DIGIT}+              yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
+([ \t]|")")\-{DIGIT}+       { yylval->number = atoi(yytext + 1); RETURN_TOKEN(NUMBER); }
+
+([ \t]|")")\-{DIGIT}+{DOT}{DIGIT}+ { yylval->floats = atof(yytext + 1); RETURN_TOKEN(FLOAT); }
+
+{DIGIT}+                           {yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);}
+
+{DIGIT}+{DOT}{DIGIT}+              {yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);}
+
 
 ";"                                     RETURN_TOKEN(SEMICOLON);
 {DOT}                                   RETURN_TOKEN(DOT);

@@ -154,8 +154,11 @@ RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>
   return RC::SUCCESS;
 }
 
-RC bind_where(ExpressionBinder* binder, std::vector<Expression*>& expressions, vector<unique_ptr<Expression>>&bound_expressions) {
-  for (auto expression : expressions) {
+RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions) {
+  if (nullptr == expressions) {
+    return RC::SUCCESS;
+  }
+  for (auto expression : *expressions) {
     auto expr = std::unique_ptr<Expression>(expression);
     RC rc = binder->bind_expression(expr, bound_expressions);
     if (OB_FAIL(rc)) {
@@ -198,52 +201,22 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
 
   /* ******************************************************{bind_select}*******************************************************************/ 
   // collect query fields in `select` statement
-  vector<unique_ptr<Expression>> bound_expressions;
+  vector<unique_ptr<Expression>> bound_expressions; // 可能直接丢给Projection opeator
   unique_ptr<ExpressionBinder> expression_binder(res.second);
   RC rc{RC::SUCCESS};
   if (rc = bind_select(expression_binder.get(), select_sql.expressions, bound_expressions); !OB_SUCC(rc)) {
     return rc;
   }
 
-  vector<unique_ptr<Expression>> bound_where_expressions;
+  /* ******************************************************{bind_where}*******************************************************************/ 
+  vector<unique_ptr<Expression>> bound_where_expressions; // 可以直接对给Predicate Operator
   if (rc = bind_where(expression_binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
     return rc;
   }
+  // actually we can convert all expressions in bound_where_expressions to ComparisonExprs
+  
 
-  // vector<unique_ptr<Expression>> group_by_expressions;
-  // for (unique_ptr<Expression> &expression : select_sql.group_by) {
-  //   RC rc = expression_binder.bind_expression(expression, group_by_expressions);
-  //   if (OB_FAIL(rc)) {
-  //     LOG_INFO("bind expression failed. rc=%s", strrc(rc));
-  //     return rc;
-  //   }
-  // }
-
-  // Table *default_table = nullptr;
-  // if (tables.size() == 1) {
-  //   default_table = tables[0];
-  // }
-
-  // // create filter statement in `where` statement
-  // FilterStmt *filter_stmt = nullptr;
-  // RC          rc          = FilterStmt::create(db,
-  //     default_table,
-  //     &table_map,
-  //     select_sql.conditions.data(),
-  //     static_cast<int>(select_sql.conditions.size()),
-  //     filter_stmt);
-  // if (rc != RC::SUCCESS) {
-  //   LOG_WARN("cannot construct filter stmt");
-  //   return rc;
-  // }
-
-  // // everything alright
-  // SelectStmt *select_stmt = new SelectStmt();
-
-  // select_stmt->tables_.swap(tables);
-  // select_stmt->query_expressions_.swap(bound_expressions);
-  // select_stmt->filter_stmt_ = filter_stmt;
-  // select_stmt->group_by_.swap(group_by_expressions);
-  // stmt                      = select_stmt;
+  auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions));
+  stmt = sel_stmt;
   return RC::SUCCESS;
-}
+}//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

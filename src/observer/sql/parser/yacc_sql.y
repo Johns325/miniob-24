@@ -480,27 +480,27 @@ value:
       free($1);
     }
     | VECTOR_DATA {
-    // 这里我们已经在词法分析阶段解析并获得了 std::vector<float> 指针
-    Value *value = new Value();
+      // 这里我们已经在词法分析阶段解析并获得了 std::vector<float> 指针
+      Value *value = new Value();
 
-    // 设置 vector 数据，假设 $1 是 std::vector<float> 指针
-    if ($1 != nullptr) {
-        // 获取底层的 float* 数组指针以及元素个数
-        float* vector_data = $1->data();      // 获取底层的 float* 指针
-        size_t vector_size = $1->size();      // 获取元素个数
+      // 设置 vector 数据，假设 $1 是 std::vector<float> 指针
+      if ($1 != nullptr) {
+          // 获取底层的 float* 数组指针以及元素个数
+          float* vector_data = $1->data();      // 获取底层的 float* 指针
+          size_t vector_size = $1->size();      // 获取元素个数
 
-        // 将 float* 数组指针和大小传递给 set_vector
-        value->set_vector(vector_data, vector_size * sizeof(float));
+          // 将 float* 数组指针和大小传递给 set_vector
+          value->set_vector(vector_data, vector_size * sizeof(float));
 
-        // 释放 std::vector<float> 指针的内存
-        delete $1;
-    } else {
-        // yyerror(&@$, NULL, sql_result, scanner, "vector data invalid", SCF_VECTOR);
-        YYABORT;  // 停止解析
-    }
+          // 释放 std::vector<float> 指针的内存
+          delete $1;
+      } else {
+          // yyerror(&@$, NULL, sql_result, scanner, "vector data invalid", SCF_VECTOR);
+          YYABORT;  // 停止解析
+      }
 
-    $$ = value;  // 将结果赋值给解析树
-};
+      $$ = value;  // 将结果赋值给解析树
+    };
 storage_format:
     /* empty */
     {
@@ -544,32 +544,40 @@ select_stmt:        /*  select 语句的语法解析树*/
     SELECT expression_list FROM relation alias_stmt rel_list where group_by order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
+      auto &selection = $$->selection;
+      // select
       if ($2 != nullptr) {
-        $$->selection.expressions.swap(*$2);
+        selection.expressions.swap(*$2);
         delete $2;
       }
-      auto &selection = $$->selection;
-
-      if ($6 != nullptr) {
-        selection.relations.swap(*$6);
-        delete $6;
-      }
+      // from
+      
       rel_info r;
       r.relation_name = $4;
       if ($5) {
         r.relation_alias = $5;
         free($5);
       }
-      free($4);
       selection.relations.emplace_back(std::move(r));
-      // reverse because every time we add a relation at the end.
-      std::reverse(selection.relations.begin(),selection.relations.end());
+      if ($6 != nullptr) {
+        for(size_t i = 0; i < $6->size();++i) {
+          
+          selection.relations.emplace_back(std::move((*$6)[i]));
+        }
+        // selection.relations.swap(*$6);
+        // delete $6;
+        printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
+      }
+      free($4);
+      // selection.relations.emplace_back(std::move(r));
+      // // reverse because every time we add a relation at the end.
+      // std::reverse(selection.relations.begin(),selection.relations.end());
 
-      // if ($5 != nullptr) {
-      //   std::reverse($5->begin(), $5->end());
-      //   $$->selection.conditions.swap(*$5);
-      //   delete $5;
-      // }
+      // where 
+      if ($7 != nullptr) {
+        selection.conditions = $7;
+      }
+    
 
 
       // TODO reverse order_by array.
@@ -620,10 +628,27 @@ expression_list:
     }
     ;
 expression:
-    expression '+' expression {
+    value {
+      cout << "value_expr\n";
+      $$ = new ValueExpr(*$1);
+      $$->set_name(token_name(sql_string, &@$));
+      delete $1;
+    }
+    | rel_attr {
+      cout << "field_expr\n";
+      RelAttrSqlNode *node = $1;
+      $$ = new UnboundFieldExpr(node->relation_name, node->attribute_name);
+      $$->set_name(token_name(sql_string, &@$));
+      delete $1;
+    }
+    | '*' {
+      $$ = new StarExpr();
+    }
+    | expression '+' expression {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::ADD, $1, $3, sql_string, &@$);
     }
     | expression '-' expression {
+      cout << "minus\n";
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::SUB, $1, $3, sql_string, &@$);
     }
     | expression '*' expression {
@@ -637,22 +662,10 @@ expression:
       $$->set_name(token_name(sql_string, &@$));
     }
     | '-' expression %prec UMINUS {
+      cout << "negative\n";
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::NEGATIVE, $2, nullptr, sql_string, &@$);
     }
-    | value {
-      $$ = new ValueExpr(*$1);
-      $$->set_name(token_name(sql_string, &@$));
-      delete $1;
-    }
-    | rel_attr {
-      RelAttrSqlNode *node = $1;
-      $$ = new UnboundFieldExpr(node->relation_name, node->attribute_name);
-      $$->set_name(token_name(sql_string, &@$));
-      delete $1;
-    }
-    | '*' {
-      $$ = new StarExpr();
-    }
+    
     | aggr_func_expr {
       $$ = $1;
     }
@@ -692,6 +705,7 @@ rel_attr:
     ID {
       $$ = new RelAttrSqlNode;
       $$->attribute_name = $1;
+      printf("attr_name:%s\n",$1);
       free($1);
     }
     | ID DOT ID {
@@ -716,7 +730,8 @@ rel_list:
     $$ = ($4 != nullptr ? $4 : new std::vector<rel_info>());
   
     rel_info r;
-    r.relation_name = $2;
+    r.relation_name = string( $2);
+    printf("rel name:%s.\n", $2);
     if ($3) {
       r.relation_alias = std::string($3);
       free($3);

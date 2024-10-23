@@ -95,11 +95,12 @@ RC LogicalPlanGenerator::create_plan(CalcStmt *calc_stmt, std::unique_ptr<Logica
 RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
   unique_ptr<LogicalOperator> *last_oper = nullptr;
-
+  RC rc{RC::SUCCESS};
   unique_ptr<LogicalOperator> table_oper(nullptr);
   last_oper = &table_oper;
 
   const std::vector<Table *> &tables = select_stmt->tables();
+  int join_pred_index{0};
   for (Table *table : tables) {
 
     unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY));
@@ -109,17 +110,24 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
       JoinLogicalOperator *join_oper = new JoinLogicalOperator;
       join_oper->add_child(std::move(table_oper));
       join_oper->add_child(std::move(table_get_oper));
+      if (select_stmt->join_expres_[join_pred_index] != nullptr) {
+        join_oper->set_predicates(std::move(select_stmt->join_expres_[join_pred_index])); 
+      }
       table_oper = unique_ptr<LogicalOperator>(join_oper);
+      ++join_pred_index;
     }
   }
 
   unique_ptr<LogicalOperator> predicate_oper;
-
-  RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
-  if (OB_FAIL(rc)) {
-    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
-    return rc;
+  if (!select_stmt->condition_expressions_.empty()) {
+    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(select_stmt->condition_expressions_)));
+    predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
+  // RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
+  // if (OB_FAIL(rc)) {
+  //   LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
+  //   return rc;
+  // }
 
   if (predicate_oper) {
     if (*last_oper) {

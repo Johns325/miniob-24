@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "sql/parser/expression_binder.h"
 #include "sql/expr/expression_iterator.h"
+#include "common/type/attr_type.h"
 
 using namespace std;
 using namespace common;
@@ -143,7 +144,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
 
   const char *table_name = unbound_field_expr->table_name();
   const char *field_name = unbound_field_expr->field_name();
-
+  string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
   if (is_blank(table_name)) {
     if (context_.query_tables().size() != 1) {
@@ -171,8 +172,10 @@ RC ExpressionBinder::bind_unbound_field_expression(
 
     Field      field(table, field_meta);
     FieldExpr *field_expr = new FieldExpr(field);
-    field_expr->set_name(field_name);
     bound_expressions.emplace_back(field_expr);
+    // string name = (table_name == nullptr ? field_name : string(table_name) + "." + string(field_name));
+    
+    field_expr->set_name(name);
   }
 
   return RC::SUCCESS;
@@ -267,7 +270,29 @@ RC ExpressionBinder::bind_comparison_expression(
   if (right.get() != right_expr.get()) {
     right_expr.reset(right.release());
   }
+  FieldExpr *field_expr{nullptr};
+  ValueExpr *val_expr{nullptr};
 
+  if (left_expr->type() == ExprType::FIELD && right_expr->type() == ExprType::VALUE) {
+    field_expr = static_cast<FieldExpr*>(left_expr.get());
+    val_expr = static_cast<ValueExpr*>(right_expr.get());
+  } else if (left_expr->type() == ExprType::VALUE && right_expr->type() == ExprType::FIELD) {
+    field_expr = static_cast<FieldExpr*>(right_expr.get());
+    val_expr = static_cast<ValueExpr*>(left_expr.get());
+  }
+  if (field_expr && val_expr) {
+    if (field_expr->field().attr_type() == AttrType::DATES) {
+      if (val_expr->value_type() != AttrType::CHARS) {
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      int date_val{0};
+      std::string date_str(val_expr->get_value().data());
+      if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+        return rc;
+      }
+      val_expr->get_value().set_date(date_val);
+    }
+  }
   bound_expressions.emplace_back(std::move(expr));
   return RC::SUCCESS;
 }
@@ -351,7 +376,12 @@ RC ExpressionBinder::bind_arithmetic_expression(
   if (right.get() != right_expr.get()) {
     right_expr.reset(right.release());
   }
-
+  // if (arithmetic_expr->arithmetic_type() == ArithmeticExpr::Type::DIV && right_expr->type() == ExprType::VALUE) {
+  //   auto val = static_cast<ValueExpr*>(right_expr.get())->get_value();
+  //   if ((val.attr_type() == AttrType::INTS || val.get_int() == 0) || (val.attr_type() == AttrType::FLOATS && val.get_float() == 0.0)) {
+  //     return RC::DIVIDE_ZERO;
+  //   }
+  // }
   bound_expressions.emplace_back(std::move(expr));
   return RC::SUCCESS;
 }
