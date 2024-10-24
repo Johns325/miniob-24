@@ -37,6 +37,10 @@ void ProcessParam::init_default(string &process_name)
   if (conf.empty()) {
     conf = "../etc/" + process_name + ".ini";
   }
+  if (protocol_.empty()) {
+    protocol_ = "cli";
+  }
+  
 
   demon = false;
 }

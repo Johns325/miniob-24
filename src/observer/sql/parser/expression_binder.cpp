@@ -34,7 +34,7 @@ Table *BinderContext::find_table(const char *table_name) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions)
+static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions, bool more_than_one_table)
 {
   const TableMeta &table_meta = table->table_meta();
   const int        field_num  = table_meta.field_num();
@@ -42,6 +42,9 @@ static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expres
     Field      field(table, table_meta.field(i));
     FieldExpr *field_expr = new FieldExpr(field);
     field_expr->set_name(field.field_name());
+    if (more_than_one_table) {
+      field_expr->set_alias(string(table->name()) + "." + field.field_name());
+    }
     expressions.emplace_back(field_expr);
   }
 }
@@ -127,7 +130,7 @@ RC ExpressionBinder::bind_star_expression(
   }
 
   for (Table *table : tables_to_wildcard) {
-    wildcard_fields(table, bound_expressions);
+    wildcard_fields(table, bound_expressions, tables_to_wildcard.size() > 1);
   }
 
   return RC::SUCCESS;
@@ -163,7 +166,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
   }
 
   if (0 == strcmp(field_name, "*")) {
-    wildcard_fields(table, bound_expressions);
+    wildcard_fields(table, bound_expressions, false);
   } else {
     const FieldMeta *field_meta = table->table_meta().field(field_name);
     if (nullptr == field_meta) {
