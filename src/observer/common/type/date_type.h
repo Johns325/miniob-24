@@ -16,6 +16,6 @@ class DateType : public DataType {
  public:
   DateType() : DataType(AttrType::DATES) {}
   virtual ~DateType() {}
-  int compare(const Value &left, const Value &right) const override;
+  int compare(const Value &left, const Value &right) const ;
   RC to_string(const Value &val, string &result) const override;
 };

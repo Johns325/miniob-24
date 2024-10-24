@@ -263,7 +263,7 @@ const TableMeta &Table::table_meta() const { return table_meta_; }
 RC Table::make_record(int value_num, const Value *values, Record &record)
 {
   RC rc = RC::SUCCESS;
-  // 检查字段类型是否一致
+  // 检查字段类型是否一致.本质上要求插入的field 数目匹配，几遍插入的是null值
   if (value_num + table_meta_.sys_field_num() != table_meta_.field_num()) {
     LOG_WARN("Input values don't match the table's schema, table name:%s", table_meta_.name());
     return RC::SCHEMA_FIELD_MISSING;
@@ -278,7 +278,7 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   for (int i = 0; i < value_num && OB_SUCC(rc); i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &    value = values[i];
-    if (field->type() != value.attr_type()) {
+    if (field->type() != value.attr_type() && value.attr_type() != AttrType::NULLS) {
       Value real_value;
       rc = Value::cast_to(value, field->type(), real_value);
       if (OB_FAIL(rc)) {
@@ -310,7 +310,15 @@ RC Table::set_value_to_record(char *record_data, const Value &value, const Field
       copy_len = data_len + 1;
     }
   }
+  // here we handle the situation where field is nullable.
+  if (field->nullable() && value.attr_type() == AttrType::NULLS) {
+    *(static_cast<char*>(record_data + field->offset() + field->len())) = 1;
+    return RC::SUCCESS;
+  }
   memcpy(record_data + field->offset(), value.data(), copy_len);
+  if (field->nullable()) {
+    *(static_cast<char*>(record_data + field->offset() + field->len())) = 0;
+  }
   return RC::SUCCESS;
 }
 

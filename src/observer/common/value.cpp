@@ -290,6 +290,10 @@ const char *Value::data() const
 string Value::to_string() const
 {
   string res;
+  // TODO optimize this case.
+  if (attr_type_ == AttrType::NULLS) {
+    return "NULL";
+  }
   RC     rc = DataType::type_instance(this->attr_type_)->to_string(*this, res);
   if (OB_FAIL(rc)) {
     LOG_WARN("failed to convert value to string. type=%s", attr_type_to_string(this->attr_type_));

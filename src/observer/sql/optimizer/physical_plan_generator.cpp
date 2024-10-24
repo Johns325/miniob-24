@@ -172,7 +172,8 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
       }
     }
   }
-
+ // TODO uncomment this line  现在没时间debugindex，所以默认都使用tablescan
+ index = nullptr;
   if (index != nullptr) {
     ASSERT(value_expr != nullptr, "got an index but value expr is null ?");
 

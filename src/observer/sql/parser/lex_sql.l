@@ -176,7 +176,7 @@ VALUES                                  RETURN_TOKEN(VALUES);
 ALIAS                                   RETURN_TOKEN(ALIAS);
 ASC                                     RETURN_TOKEN(ASC);
 ORDER                                   RETURN_TOKEN(ORDER);
-
+IS                                      RETURN_TOKEN(IS);
 DELETE                                  RETURN_TOKEN(DELETE);
 UPDATE                                  RETURN_TOKEN(UPDATE);
 SET                                     RETURN_TOKEN(SET);

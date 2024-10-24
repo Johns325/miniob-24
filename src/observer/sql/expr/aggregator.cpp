@@ -40,7 +40,9 @@ RC CountAggregator::accumulate(const Value &value)
   if (value.attr_type() == AttrType::UNDEFINED) {
     return RC::SUCCESS;
   }
-  
+  if (value.attr_type() == AttrType::NULLS) {
+    return RC::SUCCESS;
+  }
   // ASSERT(value.attr_type() == value_.attr_type(), "type mismatch. value type: %s, value_.type: %s", 
   //       attr_type_to_string(value.attr_type()), attr_type_to_string(value_.attr_type()));
   
@@ -102,7 +104,11 @@ RC MinAggregator::accumulate(const Value &value)
 
 RC MinAggregator::evaluate(Value& result)
 {
-  result = value_;
+  if (count_ == 0) {
+    result.set_null();
+  } else {
+    result = value_;
+  }
   return RC::SUCCESS;
 }
 
@@ -152,12 +158,12 @@ RC MaxAggregator::accumulate(const Value& value) {
 
 RC MaxAggregator::evaluate(Value& result) {
   // std::cout << "count in max:" << count_ << '\n';
-  // if (count_ == 0) {
-  //   result.set_null();
-  // } else {
-  //   result = value_;
-  // }
-  result = value_;
+  if (count_ == 0) {
+    result.set_null();
+  } else {
+    result = value_;
+  }
+  // result = value_;
   return RC::SUCCESS;
 }
 

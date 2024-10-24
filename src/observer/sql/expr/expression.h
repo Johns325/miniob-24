@@ -319,6 +319,8 @@ public:
   RC compare_column(const Column &left, const Column &right, std::vector<uint8_t> &result) const;
   bool isMatch(std::string s, std::string p) const;
 private:
+  void hand_null(int &) const;
+private:
   CompOp                      comp_;
   std::unique_ptr<Expression> left_;
   std::unique_ptr<Expression> right_;

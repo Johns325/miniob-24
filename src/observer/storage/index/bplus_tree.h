@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/record/record_manager.h"
 #include "storage/index/latch_memo.h"
 #include "storage/index/bplus_tree_log.h"
+#include "common/type/date_type.h"
 
 class BplusTreeHandler;
 class BplusTreeMiniTransaction;
@@ -78,8 +79,16 @@ public:
           result = common::compare_string((void *)(v1 + offset1), offsets_sizes_[i].second, (void *)(v2 + offset1), offsets_sizes_[i].second);
         } break;
         case AttrType::DATES: {
+          auto val1 = *(uint32_t *)v1;
+          auto val2 = *(uint32_t *)v2;
+          if (val1 > val2) {
+            return 1;
+          } else if (val1 < val2) {
+            return -1;
+          } else {
+            return 0;
+          }
           
-          result = common::compare_int((void*)(v1 + offset1), (void*)(v2 + offset1));
         } break;
         default: {
           ASSERT(false, "unknown attr type. %d", attr_types_[i]);

@@ -57,6 +57,7 @@ public:
   Value &operator=(Value &&other);
 
   void reset();
+  bool is_null() const {return AttrType::NULLS == attr_type_; }
 
   static RC add(const Value &left, const Value &right, Value &result)
   {

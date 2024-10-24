@@ -82,6 +82,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         SHOW
         SYNC
         INSERT
+        IS
         DELETE
         UPDATE
         UNIQUE
@@ -437,7 +438,7 @@ null_def: // 0 stands not null and 1 stands for nullable
     $$ = 1;
   }
   | NOT null {
-    $$ = 1;
+    $$ = 0;
   }
 number:
     NUMBER {$$ = $1;}
@@ -493,6 +494,10 @@ insert_val:
     } else if ($$->attr_type() == AttrType::FLOATS) {
       $$->set_float($$->get_float() *(-1));
     }
+  }
+  | null {
+    $$ = new Value;
+    $$->set_null();
   }
   ;
 value:
@@ -809,6 +814,29 @@ condition:
       std::unique_ptr<Expression> right($3);
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
+    | expression comp_op null {
+      std::unique_ptr<Expression> left($1);
+      Value v;
+      v.set_null();
+      std::unique_ptr<Expression> right(new ValueExpr(v));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | null comp_op expression {
+      Value v;
+      v.set_null();
+      std::unique_ptr<Expression> left(new ValueExpr(v));
+      std::unique_ptr<Expression> right($3);
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | null comp_op null {
+      Value v;
+      v.set_null();
+      Value v2;
+      v2.set_null();
+      std::unique_ptr<Expression> left(new ValueExpr(v));
+      std::unique_ptr<Expression> right(new ValueExpr(v2));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
     
     // rel_attr comp_op value
     // {
@@ -869,6 +897,8 @@ comp_op:
     | NE { $$ = NOT_EQUAL; }
     | LIKE { $$ = LK;}
     | NOT LIKE { $$ = NOT_LK;}
+    | IS NOT { $$ = IS_NOT_NULL;}
+    | IS  { $$ = IS_NULL;}
     ;
 
 // your code here

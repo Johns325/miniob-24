@@ -144,6 +144,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
 
   const char *table_name = unbound_field_expr->table_name();
   const char *field_name = unbound_field_expr->field_name();
+  
   string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
   if (is_blank(table_name)) {
@@ -272,7 +273,7 @@ RC ExpressionBinder::bind_comparison_expression(
   }
   FieldExpr *field_expr{nullptr};
   ValueExpr *val_expr{nullptr};
-
+  
   if (left_expr->type() == ExprType::FIELD && right_expr->type() == ExprType::VALUE) {
     field_expr = static_cast<FieldExpr*>(left_expr.get());
     val_expr = static_cast<ValueExpr*>(right_expr.get());
@@ -281,16 +282,38 @@ RC ExpressionBinder::bind_comparison_expression(
     val_expr = static_cast<ValueExpr*>(left_expr.get());
   }
   if (field_expr && val_expr) {
-    if (field_expr->field().attr_type() == AttrType::DATES) {
-      if (val_expr->value_type() != AttrType::CHARS) {
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    auto field = field_expr->field().meta();
+    auto val = val_expr->get_value();
+    if (!field->nullable()) {
+      // field is not null while insert value is null.
+      if (val.is_null())
+        return RC::FIELD_NOT_NULLABLE;
+      if (field_expr->field().attr_type() == AttrType::DATES) {
+      
+        if (val_expr->value_type() != AttrType::CHARS) {
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+        int date_val{0};
+        std::string date_str(val_expr->get_value().data());
+        if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+          return rc;
+        }
+        val_expr->get_value().set_date(date_val);
       }
-      int date_val{0};
-      std::string date_str(val_expr->get_value().data());
-      if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
-        return rc;
+    } else {
+      if (!val.is_null()) {
+        if (field_expr->field().attr_type() == AttrType::DATES) {
+          if (val_expr->value_type() != AttrType::CHARS) {
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+          int date_val{0};
+          std::string date_str(val_expr->get_value().data());
+          if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+            return rc;
+          }
+          val_expr->get_value().set_date(date_val);
+        }
       }
-      val_expr->get_value().set_date(date_val);
     }
   }
   bound_expressions.emplace_back(std::move(expr));

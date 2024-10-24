@@ -203,9 +203,42 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
   return dp[0][0];
 }
 
+// 1 stands for null is null(return true)
+// 2 stands for one of the operands is nulll and the result is false(return immediately)
+// 3 do the comparison.
+void ComparisonExpr::hand_null(int &val) const {
+  ValueExpr *null_v1;
+  ValueExpr *null_v2;
+  if (left_->type() == ExprType::VALUE && static_cast<ValueExpr*>(left_.get())->value_type() == AttrType::NULLS) {
+    null_v1 = static_cast<ValueExpr*>(left_.get());
+  }
+  if (right_->type() == ExprType::VALUE && static_cast<ValueExpr*>(right_.get())->value_type() == AttrType::NULLS) {
+    null_v2 = static_cast<ValueExpr*>(right_.get());
+  }
+  if (null_v1 && null_v2) {
+    if (comp_ == CompOp::IS_NULL) 
+      val = 1;
+    else
+      val = 2;
+  } else if (null_v1) {
+
+  }
+}
+
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
   RC  rc         = RC::SUCCESS;
+
+  // handle null
+  if (left.attr_type() == AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
+    result = comp_ == CompOp::IS_NULL;
+    return RC::SUCCESS;
+  } else if (left.attr_type() == AttrType::NULLS || right.attr_type() == AttrType::NULLS) {
+    // 其中一个结果是null。结果为true当且仅当comp_ == IS_NOT_NULL
+    result = comp_ == CompOp::IS_NOT_NULL;
+    return RC::SUCCESS;
+  }
+  // both left and right are not null type.
   if (comp_ == LK || comp_ == NOT_LK) {
     if (left.attr_type() != AttrType::CHARS || right.attr_type() != AttrType::CHARS) {
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
@@ -557,6 +590,11 @@ RC ArithmeticExpr::get_value(const Tuple &tuple, Value &value) const
       LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
       return rc;
     }
+  }
+  // TODO double check where the semantics is correct?
+  if (left_value.is_null() || right_value.is_null()) {
+    value.set_null();
+    return RC::SUCCESS;
   }
   return calc_value(left_value, right_value, value);
 }
