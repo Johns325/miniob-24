@@ -32,6 +32,7 @@ class ExpressionBinder;
 class BinderContext;
 class ConjunctionExpr;
 class UnboundFieldExpr;
+class OrderByStmt;
 
 /**
  * @brief 表示select语句
@@ -56,10 +57,11 @@ private:
 public:
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
-
+  void set_order_by_stmt(OrderByStmt* stmt) {order_by_stmt = stmt;}
   std::vector<std::unique_ptr<Expression>> &query_expressions() { return query_expressions_; }
   std::vector<std::unique_ptr<Expression>> &group_by() { return group_by_; }
-
+  RC predicates_push_down(const char *table_name, std::vector<std::unique_ptr<Expression>>& predicates);
+  RC remaining_predicates(std::vector<std::unique_ptr<Expression>>& predicates);
 private:
   std::vector<Table *>                     tables_;
   std::vector<std::unique_ptr<ConjunctionExpr>>join_expres_;
@@ -68,6 +70,7 @@ private:
   FilterStmt                              *filter_stmt_ = nullptr;
   std::vector<std::unique_ptr<Expression>> group_by_;
   std::vector<std::unique_ptr<Expression>> having_;
+  OrderByStmt                             *order_by_stmt{nullptr};
 
 };
 
@@ -78,4 +81,3 @@ RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relatio
 RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, std::string>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
 RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
 RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
-

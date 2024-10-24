@@ -54,6 +54,7 @@ enum class PhysicalOperatorType
   SCALAR_GROUP_BY,
   HASH_GROUP_BY,
   GROUP_BY_VEC,
+  ORDER_BY,
   AGGREGATE_VEC,
   EXPR_VEC,
 };
@@ -76,7 +77,7 @@ public:
   virtual std::string param() const;
 
   virtual PhysicalOperatorType type() const = 0;
-
+  virtual TupleSchema* schema() { return nullptr; }
   virtual RC open(Trx *trx) = 0;
   virtual RC next() { return RC::UNIMPLEMENTED; }
   virtual RC next(Chunk &chunk) { return RC::UNIMPLEMENTED; }

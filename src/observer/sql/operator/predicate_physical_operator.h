@@ -35,7 +35,7 @@ public:
   RC open(Trx *trx) override;
   RC next() override;
   RC close() override;
-
+  TupleSchema* schema() override { return children_[0]->schema(); }
   Tuple *current_tuple() override;
 
   RC tuple_schema(TupleSchema &schema) const override;

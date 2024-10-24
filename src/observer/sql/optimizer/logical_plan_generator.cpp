@@ -27,6 +27,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/table_get_logical_operator.h"
 #include "sql/operator/group_by_logical_operator.h"
 #include "sql/operator/update_logical_operator.h"
+#include "sql/operator/order_by_logical_operator.h"
 
 #include "sql/stmt/calc_stmt.h"
 #include "sql/stmt/delete_stmt.h"
@@ -35,6 +36,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/insert_stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
+#include "sql/stmt/order_by_stmt.h"
 #include "sql/stmt/stmt.h"
 
 #include "sql/expr/expression_iterator.h"
@@ -64,6 +66,11 @@ RC LogicalPlanGenerator::create(Stmt *stmt, unique_ptr<LogicalOperator> &logical
       rc = create_plan(insert_stmt, logical_operator);
     } break;
 
+    case StmtType::ORDER_BY: {
+      OrderByStmt *order_stmt = static_cast<OrderByStmt*>(stmt);
+      rc = create_plan(order_stmt, logical_operator);
+    } break;
+
     case StmtType::DELETE: {
       DeleteStmt *delete_stmt = static_cast<DeleteStmt *>(stmt);
 
@@ -86,6 +93,14 @@ RC LogicalPlanGenerator::create(Stmt *stmt, unique_ptr<LogicalOperator> &logical
   return rc;
 }
 
+RC LogicalPlanGenerator::create_plan(OrderByStmt *order_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
+  if (order_stmt != nullptr) {
+    LogicalOperator *oper = new OrderByLogicalOperator(std::move(order_stmt->units()));
+    logical_operator.reset(oper);
+  }
+  return RC::SUCCESS;
+}
+
 RC LogicalPlanGenerator::create_plan(CalcStmt *calc_stmt, std::unique_ptr<LogicalOperator> &logical_operator)
 {
   logical_operator.reset(new CalcLogicalOperator(std::move(calc_stmt->expressions())));
@@ -102,8 +117,13 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   const std::vector<Table *> &tables = select_stmt->tables();
   int join_pred_index{0};
   for (Table *table : tables) {
-
-    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY));
+    std::vector<std::unique_ptr<Expression>> push_down_preds;
+    select_stmt->predicates_push_down(table->name(), push_down_preds);
+    auto tb_get_ptr = new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY);
+    if (!push_down_preds.empty()) {
+      tb_get_ptr->set_predicates(std::move(push_down_preds));
+    }
+    unique_ptr<LogicalOperator> table_get_oper(tb_get_ptr);
     if (table_oper == nullptr) {
       table_oper = std::move(table_get_oper);
     } else {
@@ -119,8 +139,10 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   }
 
   unique_ptr<LogicalOperator> predicate_oper;
-  if (!select_stmt->condition_expressions_.empty()) {
-    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(select_stmt->condition_expressions_)));
+  std::vector<std::unique_ptr<Expression>> condition_expressions;
+  select_stmt->remaining_predicates(condition_expressions);
+  if (!condition_expressions.empty()) {
+    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(condition_expressions)));
     predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
   // RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
@@ -153,6 +175,21 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   }
   if (!select_stmt->having_.empty()) {
     
+  }
+
+  unique_ptr<LogicalOperator> order_by_oper;
+  if (select_stmt->order_by_stmt != nullptr) {
+    rc = create(select_stmt->order_by_stmt, order_by_oper);
+    if (OB_FAIL(rc)) {
+      LOG_WARN("failed to create group by logical plan. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+  if (order_by_oper) {
+    if (*last_oper) {
+      order_by_oper->add_child(std::move(*last_oper));
+    }
+    last_oper = &order_by_oper;
   }
 
   auto project_oper = make_unique<ProjectLogicalOperator>(std::move(select_stmt->query_expressions()));

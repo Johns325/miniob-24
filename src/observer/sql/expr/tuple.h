@@ -26,7 +26,15 @@ See the Mulan PSL v2 for more details. */
 #include "storage/record/record.h"
 
 class Table;
-
+enum class TupleType {
+  UNDEFINED_TUPLE,
+  ROW_TUPLE,
+  JOINED_TUPLE,
+  PROJECTION_TUPLE,
+  VALUE_LIST_TUPLE,
+  EXPRESSION_TUPLE,
+  COMPOSITE_TUPLE,
+};
 /**
  * @defgroup Tuple
  * @brief Tuple 元组，表示一行数据，当前返回客户端时使用
@@ -77,7 +85,7 @@ public:
    * @details 个数应该与tuple_schema一致
    */
   virtual int cell_num() const = 0;
-
+  virtual TupleType type() const = 0;
   /**
    * @brief 获取指定位置的Cell
    *
@@ -159,28 +167,38 @@ public:
  * @ingroup Tuple
  * @details 直接就是获取表中的一条记录
  */
-class RowTuple : public Tuple
-{
+class RowTuple : public Tuple {
 public:
   RowTuple() = default;
-  virtual ~RowTuple()
-  {
+  RowTuple(const RowTuple& other): table_(other.table_) {
+    record_ = new Record();
+    own_record_ = true;
+    record_->set_rid(other.record_->rid());
+    record_->copy_data(other.record_->data(), other.record_->len());
+    speces_.resize(other.speces_.size());
+    for (size_t i = 0; i < speces_.size(); i++) {
+      speces_[i] = new FieldExpr(other.speces_[i]->field());
+    }
+  }
+  
+  virtual ~RowTuple() {
+    if (nullptr != record_ && own_record_) {
+      delete record_;
+    }
     for (FieldExpr *spec : speces_) {
-      delete spec;
+      if (spec != nullptr) {
+        delete spec;
+      }
     }
     speces_.clear();
   }
 
   void set_record(Record *record) { this->record_ = record; }
 
-  void set_schema(const Table *table, const std::vector<FieldMeta> *fields)
-  {
+  void set_schema(const Table *table, const std::vector<FieldMeta> *fields) {
     table_ = table;
     // fix:join当中会多次调用右表的open,open当中会调用set_scheme，从而导致tuple当中会存储
     // 很多无意义的field和value，因此需要先clear掉
-    for (FieldExpr *spec : speces_) {
-      delete spec;
-    }
     this->speces_.clear();
     this->speces_.reserve(fields->size());
     for (const FieldMeta &field : *fields) {
@@ -190,36 +208,35 @@ public:
 
   int cell_num() const override { return speces_.size(); }
 
-  RC cell_at(int index, Value &cell) const override
-  {
+  RC cell_at(int index, Value &cell) const override {
     if (index < 0 || index >= static_cast<int>(speces_.size())) {
-      LOG_WARN("invalid argument. index=%d", index);
+      //LOG_WARN("invalid argument. index=%d", index);
       return RC::INVALID_ARGUMENT;
     }
 
     FieldExpr       *field_expr = speces_[index];
     const FieldMeta *field_meta = field_expr->field().meta();
-    cell.set_type(field_meta->type());
     if (field_meta->nullable()) {
-      auto is_null = (*static_cast<char*>(this->record_->data() + field_meta->offset() + field_meta->len()) == 1);
-      if (is_null) {
+      auto is_null = *(static_cast<char*>(record_->data() + field_meta->offset() + field_meta->len()));
+      if (is_null == static_cast<char>(1)) {
         cell.set_null();
         return RC::SUCCESS;
       }
     }
+    cell.set_type(field_meta->type());
     cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
     return RC::SUCCESS;
   }
 
-  RC spec_at(int index, TupleCellSpec &spec) const override
-  {
+  RC spec_at(int index, TupleCellSpec &spec) const override {
     const Field &field = speces_[index]->field();
     spec               = TupleCellSpec(table_->name(), field.field_name());
     return RC::SUCCESS;
   }
 
-  RC find_cell(const TupleCellSpec &spec, Value &cell) const override
-  {
+  TupleType type() const override { return TupleType::ROW_TUPLE; }
+
+  RC find_cell(const TupleCellSpec &spec, Value &cell) const override {
     const char *table_name = spec.table_name();
     const char *field_name = spec.field_name();
     if (0 != strcmp(table_name, table_->name())) {
@@ -253,8 +270,9 @@ public:
   const Record &record() const { return *record_; }
 
 private:
-  Record                  *record_ = nullptr;
   const Table             *table_  = nullptr;
+  Record                  *record_ = nullptr;
+  bool                     own_record_ = false;
   std::vector<FieldExpr *> speces_;
 };
 
@@ -280,7 +298,7 @@ public:
   void set_tuple(Tuple *tuple) { this->tuple_ = tuple; }
 
   int cell_num() const override { return static_cast<int>(expressions_.size()); }
-
+  TupleType type() const override { return TupleType::PROJECTION_TUPLE; }
   RC cell_at(int index, Value &cell) const override
   {
     if (index < 0 || index >= cell_num()) {
@@ -343,6 +361,8 @@ public:
     return RC::SUCCESS;
   }
 
+  TupleType type() const override { return TupleType::VALUE_LIST_TUPLE; }
+
   RC spec_at(int index, TupleCellSpec &spec) const override
   {
     if (index < 0 || index >= cell_num()) {
@@ -400,18 +420,36 @@ private:
  * @details 在join算子中使用
  * TODO replace with composite tuple
  */
-class JoinedTuple : public Tuple
-{
+class JoinedTuple : public Tuple {
 public:
   JoinedTuple()          = default;
-  virtual ~JoinedTuple() = default;
-
-  void set_left(Tuple *left) { left_ = left; }
+  virtual ~JoinedTuple() {
+    if (own_left_ && left_ != nullptr) {
+      delete left_;
+    }
+    if (own_right_ && right_ != nullptr) {
+      delete right_;
+    }
+  }
+  JoinedTuple(const JoinedTuple& other) {
+    left_ = other.left_;
+    right_ = other.right_;
+  }
+  void set_left(Tuple *left) { left_ = left;}
   void set_right(Tuple *right) { right_ = right; }
-
+  void set_left(Tuple *left, bool own_left) {
+    set_left(left);
+    own_left_ = own_left;
+  }
+  void set_right(Tuple *right, bool own_right) {
+    set_right(right);
+    own_right_ = own_right;
+  }
+  auto left_tuple() -> Tuple* { return left_; }
+  auto right_tuple() -> Tuple* { return right_; }
   int cell_num() const override { return left_->cell_num() + right_->cell_num(); }
-
-  RC cell_at(int index, Value &value) const override
+  TupleType type() const override { return TupleType::JOINED_TUPLE; }
+  RC cell_at(int index, Value &value) const override 
   {
     const int left_cell_num = left_->cell_num();
     if (index >= 0 && index < left_cell_num) {
@@ -425,8 +463,7 @@ public:
     return RC::NOTFOUND;
   }
 
-  RC spec_at(int index, TupleCellSpec &spec) const override
-  {
+  RC spec_at(int index, TupleCellSpec &spec) const override {
     const int left_cell_num = left_->cell_num();
     if (index >= 0 && index < left_cell_num) {
       return left_->spec_at(index, spec);
@@ -439,7 +476,7 @@ public:
     return RC::NOTFOUND;
   }
 
-  RC find_cell(const TupleCellSpec &spec, Value &value) const override
+  RC find_cell(const TupleCellSpec &spec, Value &value) const override 
   {
     RC rc = left_->find_cell(spec, value);
     if (rc == RC::SUCCESS || rc != RC::NOTFOUND) {
@@ -452,4 +489,34 @@ public:
 private:
   Tuple *left_  = nullptr;
   Tuple *right_ = nullptr;
+  bool own_left_ = false;
+  bool own_right_ = false;
 };
+
+static Tuple* tuple_cre_factory(Tuple* t) {
+  Tuple * result;
+  switch (t->type()) {
+  case TupleType::ROW_TUPLE: {
+    auto row_tuple = static_cast<RowTuple*>(t);
+    result = new RowTuple(*row_tuple);
+  }break;
+  case TupleType::JOINED_TUPLE:{
+    auto joined_tuple = static_cast<JoinedTuple*>(t); 
+    JoinedTuple *j_tuple = new JoinedTuple;
+    auto left = tuple_cre_factory(joined_tuple->left_tuple());
+    auto right = tuple_cre_factory(joined_tuple->right_tuple());
+    j_tuple->set_left(left, true);
+    j_tuple->set_right(right, true);
+    result = j_tuple;
+  }break;
+  case TupleType::VALUE_LIST_TUPLE:{
+    auto val_list_tuple = static_cast<ValueListTuple*>(t);
+    auto tuple = new ValueListTuple(*val_list_tuple);
+    result = tuple;
+  }break;
+  default:{
+    result = nullptr;
+  }break;
+  }
+  return result;
+}

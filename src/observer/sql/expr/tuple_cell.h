@@ -24,7 +24,7 @@ public:
   TupleCellSpec(const char *table_name, const char *field_name, const char *alias = nullptr);
   explicit TupleCellSpec(const char *alias);
   explicit TupleCellSpec(const std::string &alias);
-
+  bool operator==(const TupleCellSpec& other);
   const char *table_name() const { return table_name_.c_str(); }
   const char *field_name() const { return field_name_.c_str(); }
   const char *alias() const { return alias_.c_str(); }

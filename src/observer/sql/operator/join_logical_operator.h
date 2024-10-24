@@ -15,7 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include "sql/operator/logical_operator.h"
-
+class ConjunctionExpr;
 /**
  * @brief 连接算子
  * @ingroup LogicalOperator
@@ -29,6 +29,7 @@ public:
 
   LogicalOperatorType type() const override { return LogicalOperatorType::JOIN; }
   auto set_predicates(std::unique_ptr<ConjunctionExpr>&& pred) {predicates_ = std::move(pred);}
+  std::unique_ptr<ConjunctionExpr>& predicates() { return predicates_; }
 private:
   std::unique_ptr<ConjunctionExpr> predicates_;
 };

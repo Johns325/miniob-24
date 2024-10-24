@@ -51,6 +51,7 @@ public:
     spec                              = TupleCellSpec(expression->name());
     return RC::SUCCESS;
   }
+  TupleType type() const override { return TupleType::EXPRESSION_TUPLE; }
 
   RC find_cell(const TupleCellSpec &spec, Value &cell) const override
   {

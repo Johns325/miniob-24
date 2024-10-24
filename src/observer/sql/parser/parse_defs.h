@@ -119,6 +119,12 @@ struct order_by {
   bool asc;
 };
 
+struct OrderBySqlNode {
+  std::string table_name;
+  std::string attribute_name;
+  bool asc; // ascending order or not
+};
+
 /**
  * @brief 描述一个select语句
  * @ingroup SQLParser
@@ -132,12 +138,13 @@ struct order_by {
 
 struct SelectSqlNode
 {
-  std::vector<std::unique_ptr<Expression>> expressions;  ///< 查询的表达式
-  std::vector<rel_info>                    relations;    ///< 查询的表
-  vector<Expression*>*            conditions{nullptr};   ///< 查询条件，使用AND串联起来多个条件
+  std::vector<std::unique_ptr<Expression>>  expressions;  ///< 查询的表达式
+  std::vector<rel_info*>                     relations;    ///< 查询的表
+  vector<Expression*>*                      conditions{nullptr};   ///< 查询条件，使用AND串联起来多个条件
   std::vector<std::unique_ptr<Expression>>* group_by{nullptr};     ///< group by clause
-  std::vector<order_by>                    order_seqs;
-  std::vector<std::unique_ptr<Expression>>* having{nullptr};
+  // std::vector<order_by>                    order_seqs;
+  std::vector<OrderBySqlNode>              *order_by{nullptr};
+  std::vector<Expression*>* having{nullptr};
 };
 
 /**

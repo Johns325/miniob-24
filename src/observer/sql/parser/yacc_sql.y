@@ -151,7 +151,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   bool *                                     boolean_ptr;
   std::vector<float> *                       vector;
   std::vector<order_by>*                     order_by_type;
-  std::vector<rel_info>*                     rel_list_type;             
+  std::vector<rel_info*>*                     rel_list_type;
+  std::vector<OrderBySqlNode>*               order_by_list;
 }
 
 %token <number> NUMBER
@@ -184,9 +185,11 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <expression>          aggr_func_expr
 %type <expression_list>     expression_list
 %type <expression_list>     group_by
-%type <boolean_ptr>         asc_stmt
+// %type <boolean_ptr>         asc_stmt
 %type <condition_list>      on_stmt
 %type <expression_list>     rel_attrs
+%type <order_by_list>       order_by
+%type <order_by_list>       order_list
 %type <sql_node>            calc_stmt
 %type <relation_list>       attr_list
 %type <sql_node>            select_stmt
@@ -200,8 +203,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <sql_node>            create_index_stmt
 %type <boolean>             unique_stmt
 %type <string>              alias_stmt
-%type <order_by_type>       order_by_seq
-%type <order_by_type>       order_by
+// %type <order_by_type>       order_by_seq
+// %type <order_by_type>       order_by
 %type <sql_node>            drop_index_stmt
 %type <sql_node>            sync_stmt
 %type <sql_node>            begin_stmt
@@ -588,19 +591,19 @@ select_stmt:        /*  select 语句的语法解析树*/
       }
       // from
       
-      rel_info r;
-      r.relation_name = $4;
+      auto r = new rel_info;
+      r->relation_name = $4;
       if ($5) {
-        r.relation_alias = $5;
+        r->relation_alias = $5;
         free($5);
       }
-      selection.relations.emplace_back(std::move(r));
+      selection.relations.emplace_back(r);
       if ($6 != nullptr) {
-        for(size_t i = 0; i < $6->size();++i) {
-          
-          selection.relations.emplace_back(std::move((*$6)[i]));
+        for(auto iter = $6->rbegin(); iter != $6->rend(); ++iter) {
+          selection.relations.emplace_back(*iter);
+          (*iter) = nullptr;
         }
-        printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
+        // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free($4);
       
@@ -613,7 +616,10 @@ select_stmt:        /*  select 语句的语法解析树*/
         selection.group_by = $8;
       }
       if ($9 != nullptr) {
-        selection.having = $8;
+        selection.having = $9;
+      }
+      if ($10 != nullptr) {
+        selection.order_by = $10;
       }
     }
     ;
@@ -750,31 +756,32 @@ rel_list:
     $$ = nullptr;
   }
   | COMMA relation alias_stmt rel_list {
-    $$ = ($4 != nullptr ? $4 : new std::vector<rel_info>());
+    $$ = ($4 != nullptr ? $4 : new std::vector<rel_info*>());
   
-    rel_info r;
-    r.relation_name = string( $2);
+    auto r = new rel_info;
+    r->relation_name = string( $2);
     printf("rel name:%s.\n", $2);
     if ($3) {
-      r.relation_alias = std::string($3);
+      r->relation_alias = std::string($3);
       free($3);
     }
-    $$->push_back(std::move(r));
+    $$->emplace_back(r);
     free($2);
   }
   | INNER JOIN relation alias_stmt on_stmt rel_list {
-    $$ = ($6 != nullptr ? $6 : new std::vector<rel_info>());
-    rel_info r;
-    r.relation_name = $3;
+    $$ = ($6 != nullptr ? $6 : new std::vector<rel_info*>());
+    auto r = new rel_info;
+    r->relation_name = $3;
     free($3);
     if ($4) {
-      r.relation_alias = std::string($4);
+      r->relation_alias = std::string($4);
       free($4);
     }
     if ($5) {
-      r.on_conditions = $5;
+      printf("has on conditions\n");
+      r->on_conditions = $5;
     }
-    $$->insert($$->begin(), std::move(r));
+    $$->emplace_back(r);
   }
   ;
 
@@ -941,48 +948,121 @@ having_stmt:
     ;
 
 
+// order_by:
+//     /* empty */
+//     {
+//       $$ = nullptr;
+//     }
+//     | ORDER BY order_by_seq {
+//       $$ = $3;
+//     }
+//     ;
+// order_by_seq:
+//     ID asc_stmt {
+//       $$ = new vector<order_by>;
+//       order_by seq;
+//       seq.attr_name = $1;
+//       free($1);
+//       seq.asc = *($2);
+//       delete $2;
+//       $$->emplace_back(seq);
+//     }
+//     | ID asc_stmt COMMA order_by_seq {
+//       $$ = $4;
+//       order_by seq;
+//       seq.attr_name = $1;
+//       free($1);
+//       seq.asc = *($2);
+//       delete $2;
+//       $$->emplace_back(seq);
+//     }
+//     ;
+
 order_by:
     /* empty */
     {
       $$ = nullptr;
     }
-    | ORDER BY order_by_seq {
+    | ORDER BY order_list {
       $$ = $3;
     }
     ;
-order_by_seq:
-    ID asc_stmt {
-      $$ = new vector<order_by>;
-      order_by seq;
-      seq.attr_name = $1;
-      free($1);
-      seq.asc = *($2);
-      delete $2;
-      $$->emplace_back(seq);
-    }
-    | ID asc_stmt COMMA order_by_seq {
-      $$ = $4;
-      order_by seq;
-      seq.attr_name = $1;
-      free($1);
-      seq.asc = *($2);
-      delete $2;
-      $$->emplace_back(seq);
-    }
-    ;
+order_list:
+  rel_attr {
+    //std::cout << "[1]\n";
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = true;
+    delete $1;
+    $$->emplace_back(std::move(node));
+  }
+  | rel_attr COMMA order_list {
+    //std::cout << "[2]\n";
+    $$ = $3;
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = true;
+    delete $1;
+    $$->emplace($$->begin(), std::move(node));
+  }
+  | rel_attr ASC {
+    //std::cout << "[3]\n";
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = true;
+    delete $1;
+    $$->emplace_back(std::move(node));
+  } 
+  | rel_attr ASC COMMA order_list {
+    //std::cout << "[4]\n";
+    $$ = $4;
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = true;
+    delete $1;
+    $$->emplace($$->begin(), std::move(node));
+  } 
+  | rel_attr DESC {
+    //std::cout << "[5]\n";
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = false;
+    delete $1;
+    $$->emplace_back(std::move(node));
+    std::cout << (*$$)[0].attribute_name << '\n';
+  } 
+  | rel_attr DESC COMMA order_list {
+    //std::cout << "[6]\n";
+    $$ = $4;
+    OrderBySqlNode node; 
+    node.table_name = $1->relation_name;
+    node.attribute_name = $1->attribute_name;
+    node.asc = false;
+    delete $1;
+    $$->emplace($$->begin(), std::move(node));
+  }
+  ;
 
-asc_stmt:
-  /* empty */
-  {
-    // default option is asc
-    $$ = new bool(true);
-  }
-  | ASC {
-    $$ = new bool(true);
-  }
-  | DESC {
-    $$ = new bool(false);
-  };
+// asc_stmt:
+//   /* empty */
+//   {
+//     // default option is asc
+//     $$ = new bool(true);
+//   }
+//   | ASC {
+//     $$ = new bool(true);
+//   }
+//   | DESC {
+//     $$ = new bool(false);
+//   };
 
 load_data_stmt:
     LOAD DATA INFILE SSS INTO TABLE ID 

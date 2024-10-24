@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/db/db.h"
 #include "storage/table/table.h"
 #include "sql/parser/expression_binder.h"
+#include "sql/stmt/order_by_stmt.h"
 
 using namespace std;
 using namespace common;
@@ -36,9 +37,40 @@ SelectStmt::~SelectStmt()
 // 2 需要设置相应的alias(若有).  是不是也建立一个alias与table name的映射方便后续的解析？
 // 3 需要处理join(inner join, cross product是目前考虑的两类join)，以及相应的join conditions. (//TODO 后续可能会考虑把where中的join conditions下推的情形) 
 // 4 待补充
-std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, string>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
+
+RC SelectStmt::predicates_push_down(const char *table_name, std::vector<std::unique_ptr<Expression>>& predicates) {
+  for (auto &expr : condition_expressions_) {
+    if (expr == nullptr)
+      continue;
+    if (expr->type() == ExprType::COMPARISON) {
+      auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
+      FieldExpr  *field_expr{nullptr};
+      ValueExpr  *val_expr{nullptr};
+      if (cmp_expr->left()->type() == ExprType::FIELD && cmp_expr->right()->type() == ExprType::VALUE) {
+        field_expr = static_cast<FieldExpr*>(cmp_expr->left().get());
+        val_expr = static_cast<ValueExpr*>(cmp_expr->right().get());
+      } else if (cmp_expr->left()->type() == ExprType::VALUE && cmp_expr->right()->type() == ExprType::FIELD) {
+        field_expr = static_cast<FieldExpr*>(cmp_expr->right().get());
+        val_expr = static_cast<ValueExpr*>(cmp_expr->right().get());
+      }
+      if (field_expr && val_expr && (0 == strcmp(field_expr->field().table_name(), table_name))) {
+        predicates.emplace_back(expr.release());
+      }
+    }
+  }
+  return RC::SUCCESS;
+}
+RC SelectStmt::remaining_predicates(std::vector<std::unique_ptr<Expression>>& predicates) {
+  for (auto &expr : condition_expressions_) {
+    if (expr != nullptr) {
+      predicates.emplace_back(expr.release());
+    }
+  }
+  return RC::SUCCESS;
+}
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, string>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
   for (size_t i = 0; i < relations.size(); i++) {
-    auto table_name = relations[i].relation_name.c_str();
+    auto table_name = (*relations[i]).relation_name.c_str();
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return {RC::INVALID_ARGUMENT,nullptr};
@@ -53,14 +85,14 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relati
     ctx.add_table(table);
     tables.push_back(table);
     table_map.insert({table_name, table});
-    if (!relations[i].relation_alias.empty()) {
+    if (!(*relations[i]).relation_alias.empty()) {
       // TODO是否mapping[alias, Table*]更好
-      alias2name.insert({relations[i].relation_alias, relations[i].relation_name});
+      alias2name.insert({(*relations[i]).relation_alias, (*relations[i]).relation_name});
     }
   }
   auto binder = new ExpressionBinder(ctx);
   // bind join condtions.
-  if (relations[0].on_conditions != nullptr) {
+  if ((*relations[0]).on_conditions != nullptr) {
     // almost impossible.
     return {RC::INTERNAL, nullptr};
   }
@@ -68,7 +100,7 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relati
   // 应该先对on_conditions中的表达式进行绑定后再判定有效性
   // std::vector<unique_ptr<ComparisonExpr>> join_exprs;
   for (size_t k = 1; k < relations.size(); ++k) {
-    auto & rel_info = relations[k];
+    auto & rel_info = *relations[k];
     if (rel_info.on_conditions != nullptr) {
       std::vector<unique_ptr<Expression>> bound_expres;
       for (auto expr : *rel_info.on_conditions) {
@@ -237,15 +269,24 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   /* ******************************************************{bind_where}*******************************************************************/ 
   // having 中只能有出现在select后面的聚合表达式以及出现在group by后面的字段
   vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
-  if (nullptr != select_sql.having) {
-    for (auto &expr : *select_sql.having) {
-      rc = expression_binder->bind_expression(expr, bound_having_expressions);
-      if (!OB_SUCC(rc)) {
-        return rc;
-      }
+  // if (nullptr != select_sql.having) {
+  //   for (auto &expr : *select_sql.having) {
+  //     rc = expression_binder->bind_expression(expr, bound_having_expressions);
+  //     if (!OB_SUCC(rc)) {
+  //       return rc;
+  //     }
+  //   }
+  // }
+  OrderByStmt *order_by_stmt = nullptr;
+  if (select_sql.order_by != nullptr) {
+    if (rc = OrderByStmt::create(table_map, *select_sql.order_by, order_by_stmt); rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct filter stmt");
+      return rc;
     }
   }
+
   auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions), std::move(bound_having_expressions));
+  sel_stmt->set_order_by_stmt(order_by_stmt);
   stmt = sel_stmt;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

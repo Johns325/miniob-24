@@ -41,6 +41,7 @@ enum class LogicalOperatorType
   DELETE,      ///< 删除，删除可能会有子查询
   EXPLAIN,     ///< 查看执行计划
   UPDATE,
+  ORDER_BY,    ///< order by
   GROUP_BY,    ///< 分组
 };
 

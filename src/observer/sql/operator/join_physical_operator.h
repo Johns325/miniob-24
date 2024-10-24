@@ -16,12 +16,42 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/physical_operator.h"
 #include "sql/parser/parse.h"
-
+class ConjunctionExpr;
 /**
  * @brief 最简单的两表（称为左表、右表）join算子
  * @details 依次遍历左表的每一行，然后关联右表的每一行
  * @ingroup PhysicalOperator
  */
+// class NestedLoopJoinPhysicalOperator : public PhysicalOperator
+// {
+// public:
+//   NestedLoopJoinPhysicalOperator();
+//   virtual ~NestedLoopJoinPhysicalOperator() = default;
+
+//   PhysicalOperatorType type() const override { return PhysicalOperatorType::NESTED_LOOP_JOIN; }
+
+//   RC     open(Trx *trx) override;
+//   RC     next() override;
+//   RC     close() override;
+//   Tuple *current_tuple() override;
+
+// private:
+//   RC left_next();   //! 左表遍历下一条数据
+//   RC right_next();  //! 右表遍历下一条数据，如果上一轮结束了就重新开始新的一轮
+
+// private:
+//   Trx *trx_ = nullptr;
+
+//   //! 左表右表的真实对象是在PhysicalOperator::children_中，这里是为了写的时候更简单
+//   PhysicalOperator *left_        = nullptr;
+//   PhysicalOperator *right_       = nullptr;
+//   Tuple            *left_tuple_  = nullptr;
+//   Tuple            *right_tuple_ = nullptr;
+//   JoinedTuple       joined_tuple_;         //! 当前关联的左右两个tuple
+//   bool              round_done_   = true;  //! 右表遍历的一轮是否结束
+//   bool              right_closed_ = true;  //! 右表算子是否已经关闭
+// };
+
 class NestedLoopJoinPhysicalOperator : public PhysicalOperator
 {
 public:
@@ -34,11 +64,14 @@ public:
   RC     next() override;
   RC     close() override;
   Tuple *current_tuple() override;
+  void set_predicates(std::unique_ptr<ConjunctionExpr>&& predicates) { predicates_ = std::move(predicates); }
+  TupleSchema* schema() override { return &schemas_; }
+  void set_schema(const TupleSchema*);
 
 private:
   RC left_next();   //! 左表遍历下一条数据
   RC right_next();  //! 右表遍历下一条数据，如果上一轮结束了就重新开始新的一轮
-
+  bool find_position(TupleSchema* schemas, TupleCellSpec& spec, int& index);
 private:
   Trx *trx_ = nullptr;
 
@@ -50,4 +83,7 @@ private:
   JoinedTuple       joined_tuple_;         //! 当前关联的左右两个tuple
   bool              round_done_   = true;  //! 右表遍历的一轮是否结束
   bool              right_closed_ = true;  //! 右表算子是否已经关闭
+  bool finished = false;
+  TupleSchema schemas_;
+  std::unique_ptr<ConjunctionExpr> predicates_;
 };

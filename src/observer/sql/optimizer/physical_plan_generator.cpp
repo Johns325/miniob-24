@@ -44,7 +44,10 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/hash_group_by_physical_operator.h"
 #include "sql/operator/scalar_group_by_physical_operator.h"
 #include "sql/operator/table_scan_vec_physical_operator.h"
+#include "sql/operator/order_by_logical_operator.h"
+#include "sql/operator/order_by_physical_operator.h"
 #include "sql/optimizer/physical_plan_generator.h"
+
 
 using namespace std;
 
@@ -77,6 +80,10 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
       return create_plan(static_cast<DeleteLogicalOperator &>(logical_operator), oper);
     } break;
 
+    case LogicalOperatorType::ORDER_BY: {
+      return create_plan(static_cast<OrderByLogicalOperator&>(logical_operator), oper);
+    } break;
+    
     case LogicalOperatorType::UPDATE: {
       return create_plan(static_cast<UpdateLogicalOperator&>(logical_operator), oper);
     }
@@ -303,6 +310,26 @@ RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &u_oper, std::unique
   return RC::SUCCESS;
 }
 
+RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper) {
+  unique_ptr<PhysicalOperator> child_phy_oper;
+  vector<std::unique_ptr<LogicalOperator>>& child_opers = logical_oper.children();
+  RC rc = RC::SUCCESS;
+  if (!child_opers.empty()) {
+    LogicalOperator *child_oper = child_opers.front().get();
+    rc = create(*child_oper, child_phy_oper);
+    if (OB_FAIL(rc)) {
+      LOG_WARN("failed to create project logical operator's child physical operator. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+  auto order_phy_oper = new OrderByPhysicalOperator(std::move(logical_oper.units()));
+  if (child_phy_oper) {
+    order_phy_oper->add_child(std::move(child_phy_oper));
+  }
+  oper.reset(order_phy_oper);
+  return RC::SUCCESS;
+}
+
 RC PhysicalPlanGenerator::create_plan(ExplainLogicalOperator &explain_oper, unique_ptr<PhysicalOperator> &oper)
 {
   vector<unique_ptr<LogicalOperator>> &child_opers = explain_oper.children();
@@ -335,7 +362,7 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
     return RC::INTERNAL;
   }
 
-  unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);
+  unique_ptr<NestedLoopJoinPhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);
   for (auto &child_oper : child_opers) {
     unique_ptr<PhysicalOperator> child_physical_oper;
     rc = create(*child_oper, child_physical_oper);
@@ -343,10 +370,11 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
       LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
       return rc;
     }
-
+    join_physical_oper->set_schema(child_physical_oper->schema());
     join_physical_oper->add_child(std::move(child_physical_oper));
   }
-
+  auto& pred = join_oper.predicates();
+  join_physical_oper->set_predicates(std::move(pred));
   oper = std::move(join_physical_oper);
   return rc;
 }

@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/physical_operator.h"
 #include "storage/record/record_manager.h"
 #include "common/types.h"
+#include "sql/expr/tuple.h"
 
 class Table;
 
@@ -28,14 +29,19 @@ class Table;
 class TableScanPhysicalOperator : public PhysicalOperator
 {
 public:
-  TableScanPhysicalOperator(Table *table, ReadWriteMode mode) : table_(table), mode_(mode) {}
+  TableScanPhysicalOperator(Table *table, ReadWriteMode mode) : table_(table), mode_(mode), schema_setted_(false) {
+    auto tb_meta = table->table_meta();
+    for (int i = 0; i < tb_meta.field_num(); i++) {
+      schemas_.append_cell(table->name(), tb_meta.field(i)->name());
+    }
+  }
 
   virtual ~TableScanPhysicalOperator() = default;
 
   std::string param() const override;
 
   PhysicalOperatorType type() const override { return PhysicalOperatorType::TABLE_SCAN; }
-
+  TupleSchema* schema() override { return &schemas_;}
   RC open(Trx *trx) override;
   RC next() override;
   RC close() override;
@@ -54,5 +60,7 @@ private:
   RecordFileScanner                        record_scanner_;
   Record                                   current_record_;
   RowTuple                                 tuple_;
+  bool                                     schema_setted_;
+  TupleSchema                              schemas_;
   std::vector<std::unique_ptr<Expression>> predicates_;  // TODO chang predicate to table tuple filter
 };
