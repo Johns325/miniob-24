@@ -474,9 +474,9 @@ RC ArithmeticExpr::calc_value(const Value &left_value, const Value &right_value,
     } break;
 
     case Type::DIV: {
-      // if ((right_value.attr_type() == AttrType::INTS && right_value.get_int() == 0) || (right_value.attr_type() == AttrType::FLOATS && right_value.get_float() ==0.0)) {
-      //   return RC::DIVIDE_ZERO; //div-zero-exception;
-      // }
+      if ((right_value.attr_type() == AttrType::INTS && right_value.get_int() == 0) || (right_value.attr_type() == AttrType::FLOATS && right_value.get_float() ==0.0)) {
+        return RC::DIVIDE_ZERO; //div-zero-exception;
+      }
       Value::divide(left_value, right_value, value);
     } break;
 
@@ -666,8 +666,10 @@ RC ArithmeticExpr::try_get_value(Value &value) const
       return rc;
     }
   }
-
-  return calc_value(left_value, right_value, value);
+  rc = calc_value(left_value, right_value, value);
+  if (rc == RC::DIVIDE_ZERO) 
+    value.set_float(numeric_limits<float>::max());
+  return RC::SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -233,7 +233,19 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   if (rc = bind_group_by(expression_binder.get(), select_sql.group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
     return rc;
   }
-  auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions));
+
+  /* ******************************************************{bind_where}*******************************************************************/ 
+  // having 中只能有出现在select后面的聚合表达式以及出现在group by后面的字段
+  vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
+  if (nullptr != select_sql.having) {
+    for (auto &expr : *select_sql.having) {
+      rc = expression_binder->bind_expression(expr, bound_having_expressions);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+    }
+  }
+  auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions), std::move(bound_having_expressions));
   stmt = sel_stmt;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

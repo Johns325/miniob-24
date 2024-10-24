@@ -137,6 +137,7 @@ struct SelectSqlNode
   vector<Expression*>*            conditions{nullptr};   ///< 查询条件，使用AND串联起来多个条件
   std::vector<std::unique_ptr<Expression>>* group_by{nullptr};     ///< group by clause
   std::vector<order_by>                    order_seqs;
+  std::vector<std::unique_ptr<Expression>>* having{nullptr};
 };
 
 /**

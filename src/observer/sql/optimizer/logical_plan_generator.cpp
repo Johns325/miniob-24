@@ -151,6 +151,9 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
     last_oper = &group_by_oper;
   }
+  if (!select_stmt->having_.empty()) {
+    
+  }
 
   auto project_oper = make_unique<ProjectLogicalOperator>(std::move(select_stmt->query_expressions()));
   if (*last_oper) {

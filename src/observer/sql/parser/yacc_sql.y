@@ -72,6 +72,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         TABLE
         TABLES
         INDEX
+        HAVING
         CALC
         null
         SELECT
@@ -174,6 +175,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <attr_info>           attr_def
 %type <value_list>          value_list
 %type <condition_list>      where
+%type <condition_list>      having_stmt
 %type <condition_list>      condition_list
 %type <string>              storage_format
 // %type <relation_list>       rel_list
@@ -575,7 +577,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM relation alias_stmt rel_list where group_by order_by
+    SELECT expression_list FROM relation alias_stmt rel_list where group_by having_stmt order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       auto &selection = $$->selection;
@@ -609,6 +611,9 @@ select_stmt:        /*  select 语句的语法解析树*/
     
       if ($8 != nullptr) {
         selection.group_by = $8;
+      }
+      if ($9 != nullptr) {
+        selection.having = $8;
       }
     }
     ;
@@ -926,8 +931,14 @@ rel_attrs:
     delete $1;
   }
   ;
-// having:
-//     ;
+having_stmt:
+    /* empty */ {
+      $$ = nullptr;
+    }
+    | HAVING condition_list {
+      $$ = $2;
+    }
+    ;
 
 
 order_by:
