@@ -342,7 +342,7 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
     unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(update_stmt->expressions_)));
     pred_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
-  UptrLogOper update_oper (new UpdateLogicalOperator(table, update_stmt->attr_name(), update_stmt->value_amount(), std::move(update_stmt->values())));
+  UptrLogOper update_oper (new UpdateLogicalOperator(table, update_stmt->assignments()));
   if (pred_oper) {
     pred_oper->add_child(std::move(table_scan));
     update_oper->add_child(std::move(pred_oper));

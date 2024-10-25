@@ -28,8 +28,8 @@ RC BplusTreeIndex::create(Table *table, const char *file_name, const IndexMeta &
   Index::init(index_meta, fields_meta);
 
   BufferPoolManager &bpm = table->db()->buffer_pool_manager();
-  std::vector<AttrType> types;
-  std::vector<pair<int32_t,int32_t>> offsets;
+  std::vector<AttrType> types; // the types of key combinations
+  std::vector<pair<int32_t,int32_t>> offsets; // keys' corresponding offset & length within a row
   int key_len{0};
   for(auto field : fields_meta) {
     types.emplace_back(field->type());

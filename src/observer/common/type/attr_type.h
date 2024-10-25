@@ -14,9 +14,9 @@ See the Mulan PSL v2 for more details. */
  * @brief 属性的类型
  * @details AttrType 枚举列出了属性的各种数据类型。
  */
-enum class AttrType
+enum class AttrType : int32_t
 {
-  UNDEFINED,
+  UNDEFINED = 0,
   CHARS,     ///< 字符串类型
   INTS,      ///< 整数类型(4字节)
   FLOATS,    ///< 浮点数类型(4字节)

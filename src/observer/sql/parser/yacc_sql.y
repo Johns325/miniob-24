@@ -153,6 +153,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   std::vector<order_by>*                     order_by_type;
   std::vector<rel_info*>*                     rel_list_type;
   std::vector<OrderBySqlNode>*               order_by_list;
+  Assignment *                               assignment_ptr;
+  std::vector<Assignment*>*                  assignment_ptr_list;
 }
 
 %token <number> NUMBER
@@ -187,6 +189,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <expression_list>     group_by
 // %type <boolean_ptr>         asc_stmt
 %type <condition_list>      on_stmt
+%type <assignment_ptr>      assignment
+%type <assignment_ptr_list> assignment_list
 %type <expression_list>     rel_attrs
 %type <order_by_list>       order_by
 %type <order_by_list>       order_list
@@ -565,20 +569,49 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where 
+    UPDATE ID SET assignment_list where 
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
+      std::reverse($4->begin(),$4->end());
+      $$->update.assignments = $4;
       // TODO 
-      if ($7 != nullptr) {
-        $$->update.conditions= $7;
+      if ($5 != nullptr) {
+        $$->update.conditions= $5;
       }
       free($2);
-      free($4);
     }
     ;
+
+assignment_list:
+  assignment {
+    $$ = new vector<Assignment*>();
+    $$->emplace_back($1);
+  }
+  | assignment COMMA assignment_list {
+    $$ = $3;
+    $$->emplace_back($1);
+  }
+  ;
+assignment:
+  ID EQ value {
+    $$ = new Assignment;
+    $$->attr_name = string($1);
+    free($1);
+    $$->right_hand_side = new ValueExpr(*$3);
+    delete $3;
+  }
+  | ID EQ null {
+    Value v;
+    v.set_null();
+    $$ = new Assignment;
+    $$->attr_name = string($1);
+    free($1);
+    $$->right_hand_side = new ValueExpr(v);
+  }
+  // right hand side of assignment may be a sub_query.
+  ;
+
 select_stmt:        /*  select 语句的语法解析树*/
     SELECT expression_list FROM relation alias_stmt rel_list where group_by having_stmt order_by
     {

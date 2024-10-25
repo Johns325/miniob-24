@@ -303,7 +303,7 @@ RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &u_oper, std::unique
       return rc;
     }
   }
-  oper = std::unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(u_oper.table(), u_oper.attr_name(), u_oper.value_count(), std::move(u_oper.values())));
+  oper = std::unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(u_oper.table(), u_oper.assignments()));
   if (child_oper) {
     oper->add_child(std::move(child_oper));
   }

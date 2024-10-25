@@ -30,22 +30,19 @@ public:
   friend class LogicalPlanGenerator;
   using value_vector = std::vector<std::unique_ptr<Value>>;
   UpdateStmt() = default;
-  UpdateStmt(Table *table, std::string attr_name, int value_amount, std::vector<unique_ptr<Expression>>&&exprs, Value* values);
-
+  UpdateStmt(Table *table, std::vector<Assignment*>*assignments, std::vector<unique_ptr<Expression>>&&exprs);
+  
 public:
-  static RC create(Db *db, const UpdateSqlNode &update_sql, Stmt *&stmt);
+  static RC create(Db *db, UpdateSqlNode &update_sql, Stmt *&stmt);
   StmtType type() const override { return StmtType::UPDATE; }
 public:
   Table *table() const { return table_; }
-  auto attr_name() -> std::string { return attr_name_; }
   // auto filter() -> FilterStmt* { return filter_;}
-  value_vector &values()  { return values_; }
-  int    value_amount() const { return value_amount_; }
+  auto assignments() -> std::vector<Assignment*>*  { return assignments_; }
+  size_t    value_amount() const { return assignments_->size(); }
 
 private:
-  Table                      *table_{nullptr};
-  std::string                 attr_name_;
-  int                         value_amount_{0};
+  Table                              *table_{nullptr};
+  std::vector<Assignment*>           *assignments_{nullptr};
   std::vector<unique_ptr<Expression>> expressions_;
-  value_vector                values_;
 };

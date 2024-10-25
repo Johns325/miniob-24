@@ -177,6 +177,14 @@ struct DeleteSqlNode
   std::vector<Expression*> *conditions{nullptr};
 };
 
+
+// 抽象出一個assignment
+struct Assignment {
+  std::string attr_name;
+  Expression * right_hand_side{nullptr}; // ValueExpr| SubQueryExpr | NULL ....
+};
+
+
 /**
  * @brief 描述一个update语句
  * @ingroup SQLParser
@@ -184,9 +192,9 @@ struct DeleteSqlNode
 struct UpdateSqlNode
 {
   std::string                   relation_name;   ///< Relation to update
-  std::string                   attribute_name;  ///< 更新的字段，仅支持一个字段
-  Value                         value;           ///< 更新的值，仅支持一个字段
-  std::vector<Expression*> *conditions{nullptr};
+  std::vector<Assignment*>     *assignments;
+  std::vector<Expression*>     *conditions{nullptr};
+  // Value                         value;           ///< 更新的值，仅支持一个字段
 };
 
 /**

@@ -28,7 +28,7 @@ RC IndexMeta::init(const char *name, std::vector<const FieldMeta *>& metas, bool
     LOG_ERROR("Failed to init index, name is empty.");
     return RC::INVALID_ARGUMENT;
   }
-  unique_ = unique_;
+  unique_ = unique;
   name_  = name;
   for (auto meta : metas) {
    fields_.emplace_back(meta->name()); 
