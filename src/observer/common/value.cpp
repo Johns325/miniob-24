@@ -302,7 +302,28 @@ string Value::to_string() const
   return res;
 }
 
-int Value::compare(const Value &other) const { return DataType::type_instance(this->attr_type_)->compare(*this, other); }
+int Value::compare(const Value &other) const { 
+  if (this->attr_type_ == other.attr_type())
+    return DataType::type_instance(this->attr_type_)->compare(*this, other); 
+  else if (this->attr_type_ == AttrType::INTS && other.attr_type_ == AttrType::FLOATS) {
+    float this_data = this->value_.int_value_;
+    return common::compare_float((void *)&this_data, (void *)&other.value_.float_value_);
+  } else if (this->attr_type_ == AttrType::FLOATS && other.attr_type_ == AttrType::INTS) {
+    float other_data = other.value_.int_value_;
+    return common::compare_float((void *)&this->value_.float_value_, (void *)&other_data);
+  } else if (this->attr_type() == AttrType::CHARS) {
+    if (other.attr_type() == AttrType::FLOATS) {
+      auto f1 = get_float();
+      auto f2 = other.get_float();
+      return common::compare_float(&f1, &f2);
+    } else if (other.attr_type() == AttrType::INTS) {
+      int left = get_int();
+      int right = other.get_int();
+      return common::compare_int(&left, &right);
+    }
+  }
+  return -1;
+}
 
 int Value::get_int() const
 {
