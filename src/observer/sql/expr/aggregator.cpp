@@ -17,15 +17,41 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/comparator.h"
 RC SumAggregator::accumulate(const Value &value)
 {
+  // if (value_.attr_type() == AttrType::UNDEFINED) {
+  //   value_ = value;
+  //   return RC::SUCCESS;
+  // }
+  
+  // ASSERT(value.attr_type() == value_.attr_type(), "type mismatch. value type: %s, value_.type: %s", 
+  //       attr_type_to_string(value.attr_type()), attr_type_to_string(value_.attr_type()));
+  
+  // Value::add(value, value_, value_);
+  // return RC::SUCCESS;
+    if (value.attr_type() == AttrType::NULLS) {
+    return RC::SUCCESS;
+  }
   if (value_.attr_type() == AttrType::UNDEFINED) {
     value_ = value;
+    ++count_;
     return RC::SUCCESS;
   }
   
   ASSERT(value.attr_type() == value_.attr_type(), "type mismatch. value type: %s, value_.type: %s", 
         attr_type_to_string(value.attr_type()), attr_type_to_string(value_.attr_type()));
   
-  Value::add(value, value_, value_);
+  switch (value.attr_type())
+  {
+    case AttrType::INTS: {
+      value_.set_int(value.get_int() + value_.get_int());
+    } break;
+    case AttrType::FLOATS: {
+      value_.set_float(value.get_float() + value_.get_float());
+    } break;
+    default: {
+      return RC::INTERNAL;
+    }
+  }
+  ++count_;
   return RC::SUCCESS;
 }
 
