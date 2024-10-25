@@ -19,13 +19,13 @@ See the Mulan PSL v2 for more details. */
 #include "common/types.h"
 #include "common/rc.h"
 #include "storage/buffer/page.h"
-
+#include "common/lang/bitmap.h"
 class DiskBufferPool;
 struct DoubleWritePage;
 class BufferPoolManager;
 
-class DoubleWriteBuffer
-{
+// abstract class
+class DoubleWriteBuffer {
 public:
   DoubleWriteBuffer()          = default;
   virtual ~DoubleWriteBuffer() = default;
@@ -43,29 +43,25 @@ public:
   virtual RC clear_pages(DiskBufferPool *bp) = 0;
 };
 
-struct DoubleWriteBufferHeader
-{
+struct DoubleWriteBufferHeader {
   int32_t page_cnt = 0;
+  char bit_map[BP_PAGE_SIZE- sizeof(int32_t)];
 
   static const int32_t SIZE;
 };
 
 // TODO change to FrameId
-struct DoubleWritePageKey
-{
+struct DoubleWritePageKey {
   int32_t buffer_pool_id;
   PageNum page_num;
 
-  bool operator==(const DoubleWritePageKey &other) const
-  {
+  bool operator==(const DoubleWritePageKey &other) const {
     return buffer_pool_id == other.buffer_pool_id && page_num == other.page_num;
   }
 };
 
-struct DoubleWritePageKeyHash
-{
-  size_t operator()(const DoubleWritePageKey &key) const
-  {
+struct DoubleWritePageKeyHash {
+  size_t operator()(const DoubleWritePageKey &key) const {
     return std::hash<int32_t>()(key.buffer_pool_id) ^ std::hash<PageNum>()(key.page_num);
   }
 };
@@ -82,8 +78,7 @@ struct DoubleWritePageKeyHash
  *
  * @note 每次都要保证，不管在内存中还是在文件中，这里的数据都是最新的，都比Buffer pool中的数据要新
  */
-class DiskDoubleWriteBuffer : public DoubleWriteBuffer
-{
+class DiskDoubleWriteBuffer : public DoubleWriteBuffer {
 public:
   /**
    * @brief 构造函数
@@ -146,12 +141,12 @@ private:
   common::Mutex           lock_;
   BufferPoolManager      &bp_manager_;
   DoubleWriteBufferHeader header_;
+  common::Bitmap          bitmap_;
 
   unordered_map<DoubleWritePageKey, DoubleWritePage *, DoubleWritePageKeyHash> dblwr_pages_;
 };
 
-class VacuousDoubleWriteBuffer : public DoubleWriteBuffer
-{
+class VacuousDoubleWriteBuffer : public DoubleWriteBuffer {
 public:
   virtual ~VacuousDoubleWriteBuffer() = default;
 

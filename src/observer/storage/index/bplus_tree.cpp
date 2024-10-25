@@ -782,7 +782,9 @@ RC BplusTreeHandler::sync()
     RC rc = disk_buffer_pool_->get_this_page(FIRST_INDEX_PAGE, &frame);
     if (OB_SUCC(rc) && frame != nullptr) {
       char *pdata = frame->data();
-      memcpy(pdata, &file_header_, sizeof(file_header_));
+      // actually only B+ tree's root_page_id has been modified and other fields should remain unchanged.
+      reinterpret_cast<IndexFileHeader*>(pdata)->root_page = file_header_.root_page;
+      // memcpy(pdata, &file_header_, sizeof(file_header_));
       frame->mark_dirty();
       disk_buffer_pool_->unpin_page(frame);
       header_dirty_ = false;
@@ -1832,16 +1834,21 @@ RC BplusTreeHandler::delete_entry_internal(BplusTreeMiniTransaction &mtr, Frame 
 
 RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
 {
-  MemPoolItem::item_unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
+  // MemPoolItem::item_unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
+  // if (nullptr == pkey) {
+  //   LOG_WARN("Failed to alloc memory for key. size=%d", file_header_.key_length);
+  //   return RC::NOMEM;
+  // }
+  // char *key = static_cast<char *>(pkey.get());
+
+  // memcpy(key, user_key, file_header_.attr_length);
+  // memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
+  auto pkey = make_key(user_key, *rid);
   if (nullptr == pkey) {
     LOG_WARN("Failed to alloc memory for key. size=%d", file_header_.key_length);
     return RC::NOMEM;
   }
   char *key = static_cast<char *>(pkey.get());
-
-  memcpy(key, user_key, file_header_.attr_length);
-  memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
-
   BplusTreeOperationType op = BplusTreeOperationType::DELETE;
 
   RC rc = RC::SUCCESS;

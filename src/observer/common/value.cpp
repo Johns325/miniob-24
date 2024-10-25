@@ -325,6 +325,18 @@ int Value::compare(const Value &other) const {
   return -1;
 }
 
+// RC get_specific_type_value(AttrType type, Value&v) {
+//   switch (type`)
+//   {
+//   case AttrType::INTS:
+//     int 
+//     break;
+  
+//   default:
+//     break;
+//   }
+// }
+
 int Value::get_int() const
 {
   switch (attr_type_) {

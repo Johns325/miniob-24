@@ -127,6 +127,7 @@ public:
    * 获取对应的值
    * 如果当前的类型与期望获取的类型不符，就会执行转换操作
    */
+  RC Value::get_specific_type_value(AttrType type, Value&v);
   int    get_int() const;
   float *get_vector() const;
   float  get_float() const;
