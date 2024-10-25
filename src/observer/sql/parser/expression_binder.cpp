@@ -179,7 +179,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
     bound_expressions.emplace_back(field_expr);
     // string name = (table_name == nullptr ? field_name : string(table_name) + "." + string(field_name));
     
-    field_expr->set_name(name);
+    field_expr->set_name((context_.query_tables().size() > 1 ? name:field_name));
   }
 
   return RC::SUCCESS;

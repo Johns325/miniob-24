@@ -667,8 +667,13 @@ RC ArithmeticExpr::try_get_value(Value &value) const
     }
   }
   rc = calc_value(left_value, right_value, value);
-  if (rc == RC::DIVIDE_ZERO) 
-    value.set_float(numeric_limits<float>::max());
+  if (rc == RC::DIVIDE_ZERO) {
+    if (left_value.attr_type() == AttrType::FLOATS || right_value.attr_type() == AttrType::FLOATS)
+      value.set_float(numeric_limits<float>::max());
+    else 
+      // value.set_type(AttrType::UNDEFINED);
+      value.set_string("\n",1);
+  } 
   return RC::SUCCESS;
 }
 

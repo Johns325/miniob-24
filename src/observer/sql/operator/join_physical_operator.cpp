@@ -206,6 +206,9 @@ RC NestedLoopJoinPhysicalOperator::next() {
       }
     }
     bool loop  = false;
+    if (predicates_ == nullptr) {
+      return RC::SUCCESS;
+    }
     for (auto &pred : predicates_->children()) {
       ASSERT(pred->type() == ExprType::COMPARISON, "the condition that pred is comparsion expression must be held.");
       ComparisonExpr* cmp_pred = static_cast<ComparisonExpr*>(pred.get());
