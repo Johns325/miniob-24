@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/algorithm.h"
 #include "common/log/log.h"
 #include "net/ring_buffer.h"
+#include <cstring>
 
 const int32_t DEFAULT_BUFFER_SIZE = 16 * 1024;
 
@@ -103,4 +104,9 @@ RC RingBuffer::write(const char *data, int32_t size, int32_t &write_size)
   }
 
   return rc;
+}
+
+void RingBuffer::clear() {
+  std::memset(buffer_.data(), buffer_.size(), '0');
+  data_size_ = 0;
 }

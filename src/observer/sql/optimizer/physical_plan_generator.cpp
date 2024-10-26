@@ -245,12 +245,24 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
       return rc;
     }
   }
-
+  // handle all sub queries in where
+  auto sub_queries = project_oper.sub_queries();
+  for (auto query : sub_queries) {
+    // UptrLogOper sub_query_log_oper;
+    unique_ptr<PhysicalOperator> sub_query_phy_oper;
+    auto rc = create(*query->logical_sub_query_, sub_query_phy_oper);
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    query->physical_sub_query_ = sub_query_phy_oper.release();
+  }
   auto project_operator = make_unique<ProjectPhysicalOperator>(std::move(project_oper.expressions()));
   if (child_phy_oper) {
     project_operator->add_child(std::move(child_phy_oper));
   }
-
+  if (!sub_queries.empty()) {
+    project_operator->set_sub_queries(sub_queries);
+  }
   oper = std::move(project_operator);
 
   LOG_TRACE("create a project physical operator");
@@ -301,6 +313,18 @@ RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &u_oper, std::unique
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
       return rc;
+    }
+  }
+  for (auto assign : *u_oper.assignments()) {
+    if (assign->right_hand_side->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(assign->right_hand_side);
+      // UptrLogOper sub_query_log_oper;
+      unique_ptr<PhysicalOperator> sub_query_phy_oper;
+      auto rc = create(*sub_query_expr->logical_sub_query_, sub_query_phy_oper);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->physical_sub_query_ = sub_query_phy_oper.release();
     }
   }
   oper = std::unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(u_oper.table(), u_oper.assignments()));
@@ -400,7 +424,10 @@ RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &logical_oper, std:
     group_by_oper = make_unique<HashGroupByPhysicalOperator>(std::move(logical_oper.group_by_expressions()),
         std::move(logical_oper.aggregate_expressions()));
   }
-
+  if (logical_oper.children().empty()) {
+    group_by_oper->set_always_false();
+    return RC::SUCCESS;
+  }
   ASSERT(logical_oper.children().size() == 1, "group by operator should have 1 child");
 
   LogicalOperator             &child_oper = *logical_oper.children().front();

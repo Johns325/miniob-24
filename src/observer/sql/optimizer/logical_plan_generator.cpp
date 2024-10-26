@@ -38,7 +38,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/update_stmt.h"
 #include "sql/stmt/order_by_stmt.h"
 #include "sql/stmt/stmt.h"
-
+#include "sql/expr/expression.h"
 #include "sql/expr/expression_iterator.h"
 
 using namespace std;
@@ -145,11 +145,15 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
     unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(condition_expressions)));
     predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
-  // RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
-  // if (OB_FAIL(rc)) {
-  //   LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
-  //   return rc;
-  // }
+  // 對這個查詢的所有子查詢生產查詢計劃. 並且把所有的子查詢都放到ProjectPhysicalOperator中，這樣可以統一執行open操作
+  for (auto query : select_stmt->sub_queries()) {
+    UptrLogOper sub_query_log_oper;
+    auto rc = create(query->select_stmt_, sub_query_log_oper);
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    query->logical_sub_query_ = sub_query_log_oper.release();
+  }
 
   if (predicate_oper) {
     if (*last_oper) {
@@ -196,7 +200,9 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   if (*last_oper) {
     project_oper->add_child(std::move(*last_oper));
   }
-
+  if (!select_stmt->sub_queries().empty()) {
+    project_oper->set_sub_queries(select_stmt->sub_queries());
+  }
   logical_operator = std::move(project_oper);
   return RC::SUCCESS;
 }
@@ -341,6 +347,18 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
   if (!update_stmt->expressions_.empty()) {
     unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(update_stmt->expressions_)));
     pred_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
+  }
+  for (auto assign : *update_stmt->assignments()) {
+    if (assign->right_hand_side->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(assign->right_hand_side);
+      // UptrLogOper sub_query_log_oper;
+      UptrLogOper sub_query_log_oper;
+      auto rc = create(sub_query_expr->select_stmt_, sub_query_log_oper);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->logical_sub_query_ = sub_query_log_oper.release();
+    }
   }
   UptrLogOper update_oper (new UpdateLogicalOperator(table, update_stmt->assignments()));
   if (pred_oper) {

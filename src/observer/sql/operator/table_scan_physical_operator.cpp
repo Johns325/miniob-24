@@ -25,6 +25,7 @@ RC TableScanPhysicalOperator::open(Trx *trx)
     tuple_.set_schema(table_, table_->table_meta().field_metas());
   }
   trx_ = trx;
+  // table scan 可能包含filter，filter都是一個個ComparisonExpr組成，而ComparisonExpr肯能包含子查詢，這些子查詢的open操作將會在ProjectPhysicalOperator中完成。
   return rc;
 }
 
@@ -33,6 +34,29 @@ RC TableScanPhysicalOperator::next()
   RC rc = RC::SUCCESS;
 
   bool filter_result = false;
+  // 先對ComparisonExpr中的子查詢執行相應的查詢. table scan的多個predicate也是用AND鏈接
+  if (!sub_queries_executed_) {
+    sub_queries_executed_ = true;
+    for (auto &expr : predicates_) { 
+      // if (expr->type() == ExprType::COMPARISON) {
+      //   auto 
+      // }
+      if (expr->type() !=  ExprType::COMPARISON) {
+        return RC::PREDICATE_IS_NOT_COMPARISON;
+      }
+      auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
+      if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+        rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true), true);
+        if (!OB_SUCC(rc)) 
+        return rc;
+      }
+      if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+        rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false), true);
+        if (!OB_SUCC(rc))
+          return rc;
+      }
+    }
+  }
   while (OB_SUCC(rc = record_scanner_.next(current_record_))) {
     LOG_TRACE("got a record. rid=%s", current_record_.rid().to_string().c_str());
     

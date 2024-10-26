@@ -15,7 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <vector>
-
+#include <list>
 #include "sql/expr/expression.h"
 
 class BinderContext
@@ -45,7 +45,7 @@ public:
   virtual ~ExpressionBinder() = default;
 
   RC bind_expression(std::unique_ptr<Expression> &expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
-
+  std::list<SubQueryExpr*>& sub_queries() { return sub_querys_; }
 private:
   RC bind_star_expression(
       std::unique_ptr<Expression> &star_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
@@ -68,4 +68,5 @@ private:
 
 private:
   BinderContext &context_;
+  std::list<SubQueryExpr*> sub_querys_; // 存放所有的子查詢
 };

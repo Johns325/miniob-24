@@ -95,7 +95,13 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
     case ExprType::AGGREGATION: {
       ASSERT(false, "shouldn't be here");
     } break;
-
+    case ExprType::SUB_QUERY: {
+      // sub_query will be processed later.
+      sub_querys_.push_back(static_cast<SubQueryExpr*>(expr.get()));
+      bound_expressions.emplace_back(std::move(expr));
+      return RC::SUCCESS;
+    };
+    
     default: {
       LOG_WARN("unknown expression type: %d", static_cast<int>(expr->type()));
       return RC::INTERNAL;

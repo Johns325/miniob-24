@@ -63,4 +63,5 @@ private:
   bool                                     schema_setted_;
   TupleSchema                              schemas_;
   std::vector<std::unique_ptr<Expression>> predicates_;  // TODO chang predicate to table tuple filter
+  bool                                     sub_queries_executed_{false};
 };

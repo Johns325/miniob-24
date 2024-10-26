@@ -88,41 +88,43 @@ extern int yydebug;
     INT_T = 289,                   /* INT_T  */
     STRING_T = 290,                /* STRING_T  */
     FLOAT_T = 291,                 /* FLOAT_T  */
-    DATE_T = 292,                  /* DATE_T  */
-    LIKE = 293,                    /* LIKE  */
-    NOT = 294,                     /* NOT  */
-    VECTOR_T = 295,                /* VECTOR_T  */
-    HELP = 296,                    /* HELP  */
-    EXIT = 297,                    /* EXIT  */
-    DOT = 298,                     /* DOT  */
-    INTO = 299,                    /* INTO  */
-    VALUES = 300,                  /* VALUES  */
-    FROM = 301,                    /* FROM  */
-    WHERE = 302,                   /* WHERE  */
-    AND = 303,                     /* AND  */
-    SET = 304,                     /* SET  */
-    ON = 305,                      /* ON  */
-    LOAD = 306,                    /* LOAD  */
-    DATA = 307,                    /* DATA  */
-    INFILE = 308,                  /* INFILE  */
-    EXPLAIN = 309,                 /* EXPLAIN  */
-    STORAGE = 310,                 /* STORAGE  */
-    FORMAT = 311,                  /* FORMAT  */
-    EQ = 312,                      /* EQ  */
-    LT = 313,                      /* LT  */
-    GT = 314,                      /* GT  */
-    LE = 315,                      /* LE  */
-    GE = 316,                      /* GE  */
-    NE = 317,                      /* NE  */
-    L2_DISTANCE = 318,             /* L2_DISTANCE  */
-    INNER_PRODUCT = 319,           /* INNER_PRODUCT  */
-    COSINE_DISTANCE = 320,         /* COSINE_DISTANCE  */
-    NUMBER = 321,                  /* NUMBER  */
-    FLOAT = 322,                   /* FLOAT  */
-    ID = 323,                      /* ID  */
-    SSS = 324,                     /* SSS  */
-    VECTOR_DATA = 325,             /* VECTOR_DATA  */
-    UMINUS = 326                   /* UMINUS  */
+    IN = 292,                      /* IN  */
+    EXISTS = 293,                  /* EXISTS  */
+    DATE_T = 294,                  /* DATE_T  */
+    LIKE = 295,                    /* LIKE  */
+    NOT = 296,                     /* NOT  */
+    VECTOR_T = 297,                /* VECTOR_T  */
+    HELP = 298,                    /* HELP  */
+    EXIT = 299,                    /* EXIT  */
+    DOT = 300,                     /* DOT  */
+    INTO = 301,                    /* INTO  */
+    VALUES = 302,                  /* VALUES  */
+    FROM = 303,                    /* FROM  */
+    WHERE = 304,                   /* WHERE  */
+    AND = 305,                     /* AND  */
+    SET = 306,                     /* SET  */
+    ON = 307,                      /* ON  */
+    LOAD = 308,                    /* LOAD  */
+    DATA = 309,                    /* DATA  */
+    INFILE = 310,                  /* INFILE  */
+    EXPLAIN = 311,                 /* EXPLAIN  */
+    STORAGE = 312,                 /* STORAGE  */
+    FORMAT = 313,                  /* FORMAT  */
+    EQ = 314,                      /* EQ  */
+    LT = 315,                      /* LT  */
+    GT = 316,                      /* GT  */
+    LE = 317,                      /* LE  */
+    GE = 318,                      /* GE  */
+    NE = 319,                      /* NE  */
+    L2_DISTANCE = 320,             /* L2_DISTANCE  */
+    INNER_PRODUCT = 321,           /* INNER_PRODUCT  */
+    COSINE_DISTANCE = 322,         /* COSINE_DISTANCE  */
+    NUMBER = 323,                  /* NUMBER  */
+    FLOAT = 324,                   /* FLOAT  */
+    ID = 325,                      /* ID  */
+    SSS = 326,                     /* SSS  */
+    VECTOR_DATA = 327,             /* VECTOR_DATA  */
+    UMINUS = 328                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -131,7 +133,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 133 "yacc_sql.y"
+#line 135 "yacc_sql.y"
 
   ParsedSqlNode *                            sql_node;
   Expression *                          condition;
@@ -158,7 +160,7 @@ union YYSTYPE
   Assignment *                               assignment_ptr;
   std::vector<Assignment*>*                  assignment_ptr_list;
 
-#line 162 "yacc_sql.hpp"
+#line 164 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

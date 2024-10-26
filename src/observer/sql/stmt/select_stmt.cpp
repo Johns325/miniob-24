@@ -186,7 +186,7 @@ RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>
   return RC::SUCCESS;
 }
 
-RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions) {
+RC bind_where(Db*db, ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions) {
   if (nullptr == expressions) {
     return RC::SUCCESS;
   }
@@ -198,6 +198,72 @@ RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, v
       return rc;
     }
   } 
+  return RC::SUCCESS;
+}
+
+
+
+RC create_sub_query_stmt(Db* db, Expression *expr) {
+  RC rc{RC::SUCCESS};
+  
+  if (expr->type() == ExprType::COMPARISON) {
+    auto cmp_expr = static_cast<ComparisonExpr*>(expr);
+    if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->left().get());
+      Stmt *stmt;
+      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+    } 
+    if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->right().get());
+      Stmt *stmt;
+      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+    }
+    rc = create_sub_query_stmt(db,cmp_expr->left().get());
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    rc = create_sub_query_stmt(db,cmp_expr->right().get());
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+  } else if (ExprType::ARITHMETIC ==  expr->type()) {
+    // TODO 和ComparisonExpr的代碼高度相同，請優化一下
+    auto arithmetic_expr = static_cast<ArithmeticExpr*>(expr);
+    if (arithmetic_expr->left()->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->left().get());
+      Stmt *stmt;
+      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+    } 
+    if (arithmetic_expr->right()->type() == ExprType::SUB_QUERY) {
+      auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->right().get());
+      Stmt *stmt;
+      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+    }
+    rc = create_sub_query_stmt(db,arithmetic_expr->left().get());
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    rc = create_sub_query_stmt(db,arithmetic_expr->right().get());
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+  }
   return RC::SUCCESS;
 }
 
@@ -219,6 +285,13 @@ RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* 
   } 
   return RC::SUCCESS;
 }
+
+void SelectStmt::set_sub_queries(std::list<SubQueryExpr*>& other) {
+    for (auto iter = other.begin(); iter != other.end(); ++iter) {
+      sub_queries_.push_back(*iter);
+      *iter = nullptr;
+    }
+  }
 
 // bind_from
 // bind_select
@@ -256,9 +329,19 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
 
   /* ******************************************************{bind_where}*******************************************************************/ 
   vector<unique_ptr<Expression>> bound_where_expressions; // 可以直接丢给Predicate Operator
-  if (rc = bind_where(expression_binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
+  if (rc = bind_where(db, expression_binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
     return rc;
   }
+  // 在這裏爲所有的子查詢建立SelectStmt
+  for (auto query : expression_binder->sub_queries()) {
+    Stmt* select_stmt;
+    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt);
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    query->set_select_stmt(static_cast<SelectStmt*>(select_stmt));
+  }
+  
   // actually we can convert all expressions in bound_where_expressions to ComparisonExprs
   
   vector<unique_ptr<Expression>> bound_group_by_expressions; // 可以直接丢给Predicate Operator
@@ -266,7 +349,7 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
     return rc;
   }
 
-  /* ******************************************************{bind_where}*******************************************************************/ 
+  /* ******************************************************{bind_having}*******************************************************************/ 
   // having 中只能有出现在select后面的聚合表达式以及出现在group by后面的字段
   vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
   // if (nullptr != select_sql.having) {
@@ -277,6 +360,8 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   //     }
   //   }
   // }
+
+  /* ******************************************************{bind_order_by}*******************************************************************/ 
   OrderByStmt *order_by_stmt = nullptr;
   if (select_sql.order_by != nullptr) {
     if (rc = OrderByStmt::create(table_map, *select_sql.order_by, order_by_stmt); rc != RC::SUCCESS) {
@@ -287,6 +372,10 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
 
   auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions), std::move(bound_having_expressions));
   sel_stmt->set_order_by_stmt(order_by_stmt);
+  // 這個sub_queris list中包含了where和on後面的所有子查詢。
+  if (!expression_binder->sub_queries().empty()) {
+    sel_stmt->set_sub_queries(expression_binder->sub_queries());
+  }
   stmt = sel_stmt;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

@@ -98,6 +98,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         INT_T
         STRING_T
         FLOAT_T
+        IN
+        EXISTS
         DATE_T
         LIKE
         NOT
@@ -167,6 +169,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
 %type <number>              type
 %type <condition>           condition
+%type <condition>           null_condition
 %type <value>               value
 %type <value>               insert_val
 %type <number>              number
@@ -609,6 +612,12 @@ assignment:
     free($1);
     $$->right_hand_side = new ValueExpr(v);
   }
+  | ID EQ LBRACE select_stmt RBRACE{
+    $$ = new Assignment;
+    $$->attr_name = string($1);
+    free($1);
+    $$->right_hand_side = new SubQueryExpr($4);
+  }
   // right hand side of assignment may be a sub_query.
   ;
 
@@ -859,7 +868,24 @@ condition:
       std::unique_ptr<Expression> right($3);
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
-    | expression comp_op null {
+    |
+    expression comp_op LBRACE select_stmt RBRACE {
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right(new SubQueryExpr($4));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | LBRACE select_stmt RBRACE comp_op expression {
+      std::unique_ptr<Expression> left(new SubQueryExpr($2));
+      std::unique_ptr<Expression> right($5);
+      $$ = new ComparisonExpr($4, std::move(left), std::move(right));
+    }
+    | null_condition {
+      $$ = $1;
+    }
+    ;
+
+null_condition:
+  expression comp_op null {
       std::unique_ptr<Expression> left($1);
       Value v;
       v.set_null();
@@ -882,55 +908,20 @@ condition:
       std::unique_ptr<Expression> right(new ValueExpr(v2));
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
-    
-    // rel_attr comp_op value
-    // {
-    //   $$ = new ConditionSqlNode;
-    //   $$->left_is_attr = 1;
-    //   $$->left_attr = *$1;
-    //   $$->right_is_attr = 0;
-    //   $$->right_value = *$3;
-    //   $$->comp = $2;
-
-    //   delete $1;
-    //   delete $3;
-    // }
-    // | value comp_op value 
-    // {
-    //   $$ = new ConditionSqlNode;
-    //   $$->left_is_attr = 0;
-    //   $$->left_value = *$1;
-    //   $$->right_is_attr = 0;
-    //   $$->right_value = *$3;
-    //   $$->comp = $2;
-
-    //   delete $1;
-    //   delete $3;
-    // }
-    // | rel_attr comp_op rel_attr
-    // {
-    //   $$ = new ConditionSqlNode;
-    //   $$->left_is_attr = 1;
-    //   $$->left_attr = *$1;
-    //   $$->right_is_attr = 1;
-    //   $$->right_attr = *$3;
-    //   $$->comp = $2;
-
-    //   delete $1;
-    //   delete $3;
-    // }
-    // | value comp_op rel_attr
-    // {
-    //   $$ = new ConditionSqlNode;
-    //   $$->left_is_attr = 0;
-    //   $$->left_value = *$1;
-    //   $$->right_is_attr = 1;
-    //   $$->right_attr = *$3;
-    //   $$->comp = $2;
-
-    //   delete $1;
-    //   delete $3;
-    // }
+    | LBRACE select_stmt RBRACE comp_op null {
+      Value v2;
+      v2.set_null();
+      std::unique_ptr<Expression> left(new SubQueryExpr($2));
+      std::unique_ptr<Expression> right(new ValueExpr(v2));
+      $$ = new ComparisonExpr($4, std::move(left), std::move(right));
+    }
+    | null comp_op LBRACE select_stmt RBRACE {
+      Value v1;
+      v1.set_null();
+      std::unique_ptr<Expression> left(new ValueExpr(v1));
+      std::unique_ptr<Expression> right(new SubQueryExpr($4));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
     ;
 
 comp_op:
@@ -944,6 +935,10 @@ comp_op:
     | NOT LIKE { $$ = NOT_LK;}
     | IS NOT { $$ = IS_NOT_NULL;}
     | IS  { $$ = IS_NULL;}
+    | IN  { $$ = IN_OP;}
+    | NOT IN  { $$ = NOT_IN;}
+    | EXISTS  { $$ = EXISTS_OP;}
+    | NOT EXISTS  { $$ = NOT_EXISTS;}
     ;
 
 // your code here

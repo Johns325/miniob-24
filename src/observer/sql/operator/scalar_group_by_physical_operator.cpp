@@ -26,6 +26,9 @@ ScalarGroupByPhysicalOperator::ScalarGroupByPhysicalOperator(vector<Expression *
 
 RC ScalarGroupByPhysicalOperator::open(Trx *trx)
 {
+  if (always_false) {
+    return RC::SUCCESS;
+  }
   ASSERT(children_.size() == 1, "group by operator only support one child, but got %d", children_.size());
 
   PhysicalOperator &child = *children_[0];
@@ -93,7 +96,7 @@ RC ScalarGroupByPhysicalOperator::open(Trx *trx)
 
 RC ScalarGroupByPhysicalOperator::next()
 {
-  if (group_value_ == nullptr || emitted_) {
+  if (group_value_ == nullptr || emitted_ || always_false) {
     return RC::RECORD_EOF;
   }
 

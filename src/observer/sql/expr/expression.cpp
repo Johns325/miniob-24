@@ -15,7 +15,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/expression.h"
 #include "sql/expr/tuple.h"
 #include "sql/expr/arithmetic_operator.hpp"
-
+#include "sql/operator/physical_operator.h"
 using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
@@ -272,6 +272,12 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     case GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
+    case IN_OP:{
+      result = (cmp_result == 0);
+    }break;
+    case NOT_IN: {
+      result = (cmp_result != 0);
+    } break;
     default: {
       LOG_WARN("unsupported comparison. %d", comp_);
       rc = RC::INTERNAL;
@@ -302,19 +308,85 @@ RC ComparisonExpr::try_get_value(Value &cell) const
   return RC::INVALID_ARGUMENT;
 }
 
+RC ComparisonExpr::handle_sub_query(PhysicalOperator*query_phy_oper , std::vector<Value>&values, bool left)  {
+  RC rc{RC::SUCCESS};
+  TupleSchema schema;
+  query_phy_oper->tuple_schema(schema);
+  if (schema.cell_num() > 1) {
+    return RC::SUB_QUERY_RETURNS_MULTIPLE_COLUMNS;
+  }
+  while ((rc = query_phy_oper->next()) == RC::SUCCESS) {
+    Value v;
+    query_phy_oper->current_tuple()->cell_at(0, v);
+    values.emplace_back(std::move(v));
+  }
+  // query_phy_oper->close();
+  set_emited(left);
+  return RC::SUCCESS;
+}
 RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
 {
   Value left_value;
   Value right_value;
-
-  RC rc = left_->get_value(tuple, left_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of left expression. rc=%s", strrc(rc));
-    return rc;
+  RC rc{RC::SUCCESS};
+  if (left_->type() == ExprType::SUB_QUERY) {
+    // auto query_expr = static_cast<SubQueryExpr*>(left_.get());
+    if (!is_range_comparator()) {
+      if (left_values_.size() > 1)
+        return RC::SUB_QUERY_RETURNS_MULTIPLE_VALUES;
+      else if (left_values_.empty()) {
+        // Result of sub query is empty.
+        left_value.set_null();
+      } else {
+        left_value = left_values_[0];
+      }
+    }
+  } else {
+    RC rc = left_->get_value(tuple, left_value);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to get value of left expression. rc=%s", strrc(rc));
+      return rc;
+    }
   }
-  rc = right_->get_value(tuple, right_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
+
+  // right hand side
+  if (right_->type() == ExprType::SUB_QUERY) {
+    // auto query_expr = static_cast<SubQueryExpr*>(right_.get());
+    if (!is_range_comparator()) {
+      if (right_values_.size() > 1)
+        return RC::SUB_QUERY_RETURNS_MULTIPLE_VALUES;
+      else if (right_values_.empty()) {
+        // Result of sub query is empty.
+        right_value.set_null();
+      } else {
+        right_value = right_values_[0];
+      }
+    }
+  } else {
+    rc = right_->get_value(tuple, right_value);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+
+  if (is_range_comparator()) {
+    // we can assume left hand side is either a column or a constant value(including value returned from sub query).
+    for (auto& v : right_values_) {
+      bool result{false};
+      if ((rc = compare_value(left_value, v, result)) != RC::SUCCESS) {
+        return rc;
+      }
+      if (result && comp_ == CompOp::IN_OP) {
+        value.set_boolean(true);
+        return rc;
+      }
+      if (!result && comp_ == CompOp::NOT_IN) {
+        value.set_boolean(false);
+        return rc;
+      }
+    }
+    value.set_boolean(comp_ == CompOp::NOT_IN);
     return rc;
   }
 
@@ -393,6 +465,15 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
 
   Value tmp_value;
   for (const unique_ptr<Expression> &expr : children_) {
+    if (expr->type() == ExprType::COMPARISON) {
+      auto cmp_exp = static_cast<ComparisonExpr*>(expr.get());
+      if (cmp_exp->left()->type() == ExprType::SUB_QUERY) {
+        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->left().get())->get_physical_operator(), cmp_exp->value_list(true), true);
+      }
+      if (cmp_exp->right()->type() == ExprType::SUB_QUERY) {
+        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->right().get())->get_physical_operator(), cmp_exp->value_list((false)), false);
+      }
+    }
     rc = expr->get_value(tuple, tmp_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));

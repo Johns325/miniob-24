@@ -176,6 +176,22 @@ RC NestedLoopJoinPhysicalOperator::next() {
     return RC::RECORD_EOF;
   }
   RC rc;
+  // for (auto &expr : predicates_->children()) { 
+  //   // if (expr->type() == ExprType::COMPARISON) {
+  //   //   auto 
+  //   // }
+  //   if (expr->type() !=  ExprType::COMPARISON) {
+  //     return RC::PREDICATE_IS_NOT_COMPARISON;
+  //   }
+  //   auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
+  //   if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+  //     cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true), true);
+  //   }
+  //   if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+  //     cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false), false);
+  //   }
+  // }
+
   while (true) {
 
     if (left_tuple_ == nullptr) {

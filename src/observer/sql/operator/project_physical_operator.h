@@ -13,7 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #pragma once
-
+#include <list>
 #include "sql/operator/physical_operator.h"
 #include "sql/expr/expression_tuple.h"
 
@@ -39,8 +39,10 @@ public:
   Tuple *current_tuple() override;
 
   RC tuple_schema(TupleSchema &schema) const override;
-
+  std::list<SubQueryExpr*>& sub_queries() { return sub_queries_; }
+  void set_sub_queries(std::list<SubQueryExpr*>& other);
 private:
   std::vector<std::unique_ptr<Expression>>     expressions_;
   ExpressionTuple<std::unique_ptr<Expression>> tuple_;
+  std::list<SubQueryExpr*> sub_queries_;
 };

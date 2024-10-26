@@ -26,6 +26,14 @@ class PredicateLogicalOperator : public LogicalOperator
 public:
   PredicateLogicalOperator(std::unique_ptr<Expression> expression);
   virtual ~PredicateLogicalOperator() = default;
-
+  std::list<SubQueryExpr*>& sub_queries() { return sub_queries_; }
+  void set_sub_queries(std::list<SubQueryExpr*>& other) {
+    for (auto iter = other.begin(); iter != other.end(); ++iter) {
+      sub_queries_.push_back(*iter);
+      *iter = nullptr;
+    }
+  } 
   LogicalOperatorType type() const override { return LogicalOperatorType::PREDICATE; }
+private:
+  std::list<SubQueryExpr*> sub_queries_;
 };

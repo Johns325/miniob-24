@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/table/table_meta.h"
 #include "sql/stmt/filter_stmt.h"
 #include "sql/parser/expression_binder.h"
+#include "sql/stmt/select_stmt.h"
 UpdateStmt::UpdateStmt(Table *table, std::vector<Assignment*>*assignments, std::vector<unique_ptr<Expression>>&&exprs)
 : table_(table), assignments_(assignments), expressions_(std::move(exprs)) {}
 
@@ -36,8 +37,21 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     // TODO add support of updating multiple fields simultaneously.
-    if(assign->right_hand_side->type() != ExprType::VALUE)
+    // if(assign->right_hand_side->type() != ExprType::VALUE)
+    //   continue;
+    if (assign->right_hand_side->type() == ExprType::SUB_QUERY) {
+      Stmt * stmt;
+      auto sub_query_expr = static_cast<SubQueryExpr*>(assign->right_hand_side); 
+      auto sql_node = sub_query_expr->get_sql_node();
+      auto rc = SelectStmt::create(db, sql_node->selection, stmt);
+      if (!OB_SUCC(rc)) {
+      return rc;
+      }
+      // auto select_stmt = static_cast<SelectStmt*>(stmt);
+      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+      // sub_query_expr->clean_sql_node();
       continue;
+    }
     // only constant value need to check type contriant.
     auto &v = static_cast<ValueExpr*>(assign->right_hand_side)->get_value();
      if (!field->nullable() && v.attr_type() == AttrType::NULLS) {
@@ -80,6 +94,7 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
       }
     }
   }
+  
 
   auto u_stmt = new UpdateStmt(table, update.assignments, std::move(bound_where_expressions));
   stmt = u_stmt;

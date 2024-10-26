@@ -21,9 +21,12 @@ See the Mulan PSL v2 for more details. */
 #include "storage/field/field.h"
 #include "sql/expr/aggregator.h"
 #include "storage/common/chunk.h"
+#include "sql/stmt/select_stmt.h"
+// #include "sql/operator/physical_operator.h"
+// #include "sql/operator/logical_operator.h"
 
 class Tuple;
-
+class ParsedSqlNode;
 /**
  * @defgroup Expression
  * @brief 表达式
@@ -251,6 +254,44 @@ public:
 private:
   Value value_;
 };
+class SelectStmt;
+class LogicalOperator;
+class PhysicalOperator;
+class SubQueryExpr : public Expression 
+{
+public:
+  friend class LogicalPlanGenerator;
+  friend class PhysicalPlanGenerator;
+  friend class UpdatePhysicalOperator;
+  friend class PredicatePhysicalOperator;
+  friend class SelectStmt;
+  ~SubQueryExpr() {
+    if (sql_node_)
+      delete sql_node_;
+    // if (logical_sub_query_)
+    //   delete logical_sub_query_;
+    // if (physical_sub_query_)
+    //   delete physical_sub_query_;
+    if (select_stmt_)
+      delete select_stmt_;
+  }
+  SubQueryExpr() = default;
+  explicit SubQueryExpr(ParsedSqlNode* sql_node) : sql_node_(sql_node){}
+  ExprType type() const override { return ExprType::SUB_QUERY; }
+  AttrType value_type() const override { return AttrType::UNDEFINED; }
+  int      value_length() const override { return 0; }
+  RC get_value(const Tuple &tuple, Value &value) const override { return RC::SUCCESS; }
+  auto get_sql_node() -> ParsedSqlNode* { return sql_node_;}
+  auto select_stmt() -> SelectStmt* {return select_stmt_;}
+  void set_select_stmt(SelectStmt* stmt) {select_stmt_ = stmt;}
+  PhysicalOperator* get_physical_operator() {return physical_sub_query_;}
+  // void clean_sql_node() { delete sql_node_; }
+private:
+  ParsedSqlNode *sql_node_{nullptr};
+  SelectStmt* select_stmt_{nullptr};
+  LogicalOperator *logical_sub_query_{nullptr};
+  PhysicalOperator* physical_sub_query_{nullptr};
+};
 
 /**
  * @brief 类型转换表达式
@@ -309,7 +350,8 @@ public:
    * 在优化的时候，可能会使用到
    */
   RC try_get_value(Value &value) const override;
-
+  bool is_range_comparator() const { return  comp_ == CompOp::IN_OP || comp_ == CompOp::NOT_IN;}
+  RC handle_sub_query(PhysicalOperator*query_phy_oper , std::vector<Value>&values, bool);
   /**
    * compare the two tuple cells
    * @param value the result of comparison
@@ -318,6 +360,13 @@ public:
 
   template <typename T>
   RC compare_column(const Column &left, const Column &right, std::vector<uint8_t> &result) const;
+  std::vector<Value>& value_list(bool left) { return left ? left_values_ : right_values_; }
+  void set_emited(bool left) {
+    if (left)
+      left_sub_query_emited = true;
+    else 
+      right_sub_query_emited = true;
+  }
   bool isMatch(std::string s, std::string p) const;
 private:
   void hand_null(int &) const;
@@ -325,6 +374,10 @@ private:
   CompOp                      comp_;
   std::unique_ptr<Expression> left_;
   std::unique_ptr<Expression> right_;
+  bool left_sub_query_emited{false};
+  bool right_sub_query_emited{false};
+  std::vector<Value> left_values_;
+  std::vector<Value> right_values_;
 };
 
 /**

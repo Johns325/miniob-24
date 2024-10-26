@@ -37,7 +37,13 @@ RC ProjectPhysicalOperator::open(Trx *trx)
     LOG_WARN("failed to open child operator: %s", strrc(rc));
     return rc;
   }
-
+  // 對所有子查詢執行open
+  for (auto query : sub_queries_) {
+    rc = query->get_physical_operator()->open(trx);
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+  }
   return RC::SUCCESS;
 }
 
@@ -46,11 +52,18 @@ RC ProjectPhysicalOperator::next()
   if (children_.empty()) {
     return RC::RECORD_EOF;
   }
-  return children_[0]->next();
+  auto rc = children_[0]->next();
+  if (rc != RC::SUCCESS && rc != RC::RECORD_EOF) {
+    close();
+  }
+  return rc;
 }
 
 RC ProjectPhysicalOperator::close()
 {
+  for (auto query: sub_queries_) {
+    query->get_physical_operator()->close();
+  }
   if (!children_.empty()) {
     children_[0]->close();
   }
@@ -71,4 +84,11 @@ RC ProjectPhysicalOperator::tuple_schema(TupleSchema &schema) const
       schema.append_cell(expression->name());
   }
   return RC::SUCCESS;
+}
+
+void ProjectPhysicalOperator::set_sub_queries(std::list<SubQueryExpr*>& other) {
+  for (auto iter = other.begin(); iter != other.end(); ++iter) {
+    sub_queries_.push_back(*iter);
+    *iter = nullptr;
+  }
 }

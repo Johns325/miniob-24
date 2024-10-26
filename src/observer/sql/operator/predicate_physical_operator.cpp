@@ -17,7 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/field/field.h"
 #include "storage/record/record.h"
-
+#include "sql/expr/expression.h"
 PredicatePhysicalOperator::PredicatePhysicalOperator(std::unique_ptr<Expression> expr) : expression_(std::move(expr))
 {
   ASSERT(expression_->value_type() == AttrType::BOOLEANS, "predicate's expression should be BOOLEAN type");
@@ -30,7 +30,17 @@ RC PredicatePhysicalOperator::open(Trx *trx)
     return RC::INTERNAL;
   }
 
-  return children_[0]->open(trx);
+  auto rc = children_[0]->open(trx);
+  if (!OB_SUCC(rc)) {
+    return rc;
+  }
+  // for (auto query : sub_queries_) {
+  //   rc = query->physical_sub_query_->open(trx);
+  //   if (!OB_SUCC(rc)) {
+  //     return rc;
+  //   }
+  // }
+  return RC::SUCCESS;
 }
 
 RC PredicatePhysicalOperator::next()

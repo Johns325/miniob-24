@@ -26,7 +26,7 @@ class GroupByPhysicalOperator : public PhysicalOperator
 public:
   GroupByPhysicalOperator(std::vector<Expression *> &&expressions);
   virtual ~GroupByPhysicalOperator() = default;
-
+  void set_always_false() {always_false = true;}
 protected:
   using AggregatorList = std::vector<std::unique_ptr<Aggregator>>;
   /**
@@ -54,4 +54,5 @@ protected:
 protected:
   std::vector<Expression *> aggregate_expressions_;  /// 聚合表达式
   std::vector<Expression *> value_expressions_;      /// 计算聚合时的表达式
+  bool always_false{false};
 };

@@ -17,7 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <memory>
 #include <vector>
 #include <optional>
-
+#include <list>
 #include "common/rc.h"
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
@@ -30,9 +30,11 @@ class rel_info;
 class Expression;
 class ExpressionBinder;
 class BinderContext;
+class ComparisonExpr;
 class ConjunctionExpr;
 class UnboundFieldExpr;
 class OrderByStmt;
+class SubQueryExpr;
 
 /**
  * @brief 表示select语句
@@ -48,7 +50,8 @@ public:
   ~SelectStmt() override;
 
   StmtType type() const override { return StmtType::SELECT; }
-
+  void set_sub_queries(std::list<SubQueryExpr*>& other);
+  std::list<SubQueryExpr*>& sub_queries() { return sub_queries_;}
 public:
   static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt);
   
@@ -68,6 +71,7 @@ private:
   std::vector<std::unique_ptr<Expression>> query_expressions_;
   std::vector<std::unique_ptr<Expression>> condition_expressions_;
   FilterStmt                              *filter_stmt_ = nullptr;
+  std::list<SubQueryExpr*>                 sub_queries_;
   std::vector<std::unique_ptr<Expression>> group_by_;
   std::vector<std::unique_ptr<Expression>> having_;
   OrderByStmt                             *order_by_stmt{nullptr};
@@ -79,5 +83,6 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relati
 RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& relations, vector<unique_ptr<Expression>>&bound_expressions);
 RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs);
 RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, std::string>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
-RC bind_where(ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
+RC bind_where(Db*db, ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
 RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
+RC create_sub_query_stmt(Db* db,Expression* cmp_expr);
