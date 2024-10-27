@@ -157,6 +157,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   std::vector<OrderBySqlNode>*               order_by_list;
   Assignment *                               assignment_ptr;
   std::vector<Assignment*>*                  assignment_ptr_list;
+  std::vector<Value*>*                       const_value_list_type;
 }
 
 %token <number> NUMBER
@@ -180,6 +181,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
+%type <const_value_list_type>          const_value_list
+%type <expression>          const_value_list_expr
 %type <condition_list>      where
 %type <condition_list>      having_stmt
 %type <condition_list>      condition_list
@@ -510,6 +513,24 @@ insert_val:
   | null {
     $$ = new Value;
     $$->set_null();
+  }
+  ;
+
+const_value_list_expr:
+  LBRACE const_value_list RBRACE {
+    $$ = new ConstantValueListExpr($2);
+    delete $2;
+  };
+
+const_value_list:
+  value {
+    cout << $1->get_int() << endl;
+    $$ = new vector<Value*>();
+    $$->emplace_back($1);
+  }
+  | value COMMA const_value_list {
+    $$ = $3;
+    $$->emplace_back($1);
   }
   ;
 value:
@@ -879,6 +900,27 @@ condition:
       std::unique_ptr<Expression> right($5);
       $$ = new ComparisonExpr($4, std::move(left), std::move(right));
     }
+    | expression comp_op const_value_list_expr {
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right($3);
+
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | const_value_list_expr comp_op expression {
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right($3);
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | LBRACE select_stmt RBRACE comp_op const_value_list_expr {
+      std::unique_ptr<Expression> left(new SubQueryExpr($2));
+      std::unique_ptr<Expression> right($5);
+      $$ = new ComparisonExpr($4, std::move(left), std::move(right));
+    }
+    | const_value_list_expr comp_op LBRACE select_stmt RBRACE {
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right(new SubQueryExpr($4));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
     | null_condition {
       $$ = $1;
     }
@@ -920,6 +962,21 @@ null_condition:
       v1.set_null();
       std::unique_ptr<Expression> left(new ValueExpr(v1));
       std::unique_ptr<Expression> right(new SubQueryExpr($4));
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    // null值和value_list進行比較
+    | null comp_op const_value_list_expr {
+      Value v1;
+      v1.set_null();
+      std::unique_ptr<Expression> left(new ValueExpr(v1));
+      std::unique_ptr<Expression> right($3);
+      $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    }
+    | const_value_list_expr comp_op null {
+      Value v2;
+      v2.set_null();
+      std::unique_ptr<Expression> left($1);
+      std::unique_ptr<Expression> right(new ValueExpr(v2));
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
     ;

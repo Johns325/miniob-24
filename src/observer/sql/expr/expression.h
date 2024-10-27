@@ -50,6 +50,7 @@ enum class ExprType
   CONJUNCTION,  ///< 多个表达式使用同一种关系(AND或OR)来联结
   ARITHMETIC,   ///< 算术运算
   SUB_QUERY,
+  CONSTANT_VALUE_LIST,
   AGGREGATION,  ///< 聚合运算
 };
 
@@ -293,6 +294,20 @@ private:
   PhysicalOperator* physical_sub_query_{nullptr};
 };
 
+
+class ConstantValueListExpr : public Expression {
+public:
+  ConstantValueListExpr() = default;
+  ConstantValueListExpr(std::vector<Value*>* values);
+  RC get_value(const Tuple &tuple, Value &value) const override;
+  std::vector<std::unique_ptr<Value>>& values() { return values_; }
+  ExprType type() const override { return ExprType::CONSTANT_VALUE_LIST; }
+  // we assume all values in list have the same type
+  AttrType value_type() const override { return (values_.empty() ? AttrType::UNDEFINED : values_[0]->attr_type()); }
+private:
+  std::vector<std::unique_ptr<Value>> values_;
+};
+
 /**
  * @brief 类型转换表达式
  * @ingroup Expression
@@ -370,6 +385,7 @@ public:
   bool isMatch(std::string s, std::string p) const;
 private:
   void hand_null(int &) const;
+  RC get_operand(bool left, Tuple& tuple, Value& value);
 private:
   CompOp                      comp_;
   std::unique_ptr<Expression> left_;

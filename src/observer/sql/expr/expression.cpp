@@ -71,6 +71,23 @@ RC ValueExpr::get_column(Chunk &chunk, Column &column)
   return RC::SUCCESS;
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////
+ConstantValueListExpr::ConstantValueListExpr(std::vector<Value*>* values) {
+  if (values != nullptr && !values->empty()) {
+    for (auto iter = values->begin(); iter != values->end(); ++iter) {
+      unique_ptr<Value> v(*iter);
+      *iter = nullptr;
+      values_.emplace_back(std::move(v));
+    }
+  }
+}
+
+RC ConstantValueListExpr::get_value(const Tuple &tuple, Value &value) const {
+  // TODO add support.
+  return RC::SUCCESS;
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 CastExpr::CastExpr(unique_ptr<Expression> child, AttrType cast_type) : child_(std::move(child)), cast_type_(cast_type)
 {}
@@ -114,7 +131,22 @@ RC CastExpr::try_get_value(Value &result) const
 
 ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_ptr<Expression> right)
     : comp_(comp), left_(std::move(left)), right_(std::move(right))
-{}
+{
+  if (left_->type() == ExprType::CONSTANT_VALUE_LIST) {
+    auto& values = static_cast<ConstantValueListExpr*>(left_.get())->values();
+    for (auto &v_ptr : values) {
+      Value val((*v_ptr));
+      left_values_.emplace_back(std::move(val));
+    }
+  }
+  if (right_->type() == ExprType::CONSTANT_VALUE_LIST) {
+    auto& values = static_cast<ConstantValueListExpr*>(right_.get())->values();
+    for (auto &v_ptr : values) {
+      Value val((*v_ptr));
+      right_values_.emplace_back(std::move(val));
+    }
+  }
+}
 
 ComparisonExpr::~ComparisonExpr() {}
 
@@ -324,6 +356,8 @@ RC ComparisonExpr::handle_sub_query(PhysicalOperator*query_phy_oper , std::vecto
   set_emited(left);
   return RC::SUCCESS;
 }
+
+
 RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
 {
   Value left_value;
@@ -341,6 +375,8 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
         left_value = left_values_[0];
       }
     }
+  } else if (left_->type() == ExprType::CONSTANT_VALUE_LIST) {
+
   } else {
     RC rc = left_->get_value(tuple, left_value);
     if (rc != RC::SUCCESS) {
@@ -362,7 +398,19 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
         right_value = right_values_[0];
       }
     }
-  } else {
+  } else if (right_->type() == ExprType::CONSTANT_VALUE_LIST) {
+    if (!is_range_comparator()) {
+      if (right_values_.size() > 1)
+        return RC::SUB_QUERY_RETURNS_MULTIPLE_VALUES;
+      else if (right_values_.empty()) {
+        // Result of sub query is empty.
+        right_value.set_null();
+      } else {
+        right_value = right_values_[0];
+      }
+    }
+  }
+   else {
     rc = right_->get_value(tuple, right_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));

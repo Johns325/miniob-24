@@ -159,8 +159,9 @@ union YYSTYPE
   std::vector<OrderBySqlNode>*               order_by_list;
   Assignment *                               assignment_ptr;
   std::vector<Assignment*>*                  assignment_ptr_list;
+  std::vector<Value*>*                       const_value_list_type;
 
-#line 164 "yacc_sql.hpp"
+#line 165 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -101,6 +101,11 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
       bound_expressions.emplace_back(std::move(expr));
       return RC::SUCCESS;
     };
+    case ExprType::CONSTANT_VALUE_LIST: {
+      // nothing to do.
+      bound_expressions.emplace_back(std::move(expr));
+      return RC::SUCCESS;
+    }
     
     default: {
       LOG_WARN("unknown expression type: %d", static_cast<int>(expr->type()));
