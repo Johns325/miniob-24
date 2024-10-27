@@ -66,7 +66,8 @@ RC UpdatePhysicalOperator::next() {
     if (OB_SUCC(rc)) {
       auto tuple = static_cast<RowTuple*>(children_[0]->current_tuple());
       auto record = tuple->record();
-      trx->delete_record(table_, record);
+      // trx->delete_record(table_, record);
+      table_->delete_record(record);
       for (size_t i = 0; i < assignments_->size(); i++) {
         auto field = tb_meta.field((*assignments_)[i]->attr_name.c_str());
         rc = table_->set_value_to_record(record.data(), value_ptrs_[i], field);
@@ -74,7 +75,7 @@ RC UpdatePhysicalOperator::next() {
           return rc;
         }
       }
-      rc = trx->insert_record(table_, record);
+      rc = table_->insert_record(record);
       if (rc != RC::SUCCESS) {
         LOG_WARN("failed to insert record by transaction. rc=%s", strrc(rc));
       }
