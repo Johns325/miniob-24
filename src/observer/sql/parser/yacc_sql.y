@@ -84,6 +84,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         SYNC
         INSERT
         IS
+        AS
         DELETE
         UPDATE
         UNIQUE
@@ -117,6 +118,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         LOAD
         DATA
         INFILE
+        VIEW
         EXPLAIN
         STORAGE
         FORMAT
@@ -207,11 +209,14 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <sql_node>            update_stmt
 %type <sql_node>            delete_stmt
 %type <sql_node>            create_table_stmt
+%type <sql_node>            create_select_stmt
+%type <sql_node>            create_view_stmt
 %type <sql_node>            drop_table_stmt
 %type <sql_node>            show_tables_stmt
 %type <sql_node>            desc_table_stmt
 %type <sql_node>            create_index_stmt
 %type <boolean>             unique_stmt
+%type <boolean>             as_stmt
 %type <string>              alias_stmt
 // %type <order_by_type>       order_by_seq
 // %type <order_by_type>       order_by
@@ -255,6 +260,8 @@ command_wrapper:
   | drop_index_stmt
   | sync_stmt
   | begin_stmt
+  | create_select_stmt
+  | create_view_stmt
   | commit_stmt
   | rollback_stmt
   | load_data_stmt
@@ -403,6 +410,32 @@ create_table_stmt:    /*create table 语句的语法解析树*/
       }
     }
     ;
+create_select_stmt:
+  CREATE TABLE ID as_stmt  select_stmt  {
+    $$ = new ParsedSqlNode(SCF_CREATE_VIEW);
+    auto &table = $$->create_table_select;
+    table.relation_name =string($3);
+    free($3);
+    table.query = $5;
+  };
+
+create_view_stmt:
+  CREATE VIEW ID as_stmt  select_stmt  {
+    $$ = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
+    auto &view = $$->create_view;
+    view.view_name =string($3);
+    free($3);
+    view.query = $5;
+  };
+as_stmt:
+  /* empty */
+  {
+    $$ = false;
+  }
+  | AS {
+    $$ = true;
+  };
+
 attr_def_list:
     /* empty */
     {

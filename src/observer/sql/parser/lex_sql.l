@@ -176,6 +176,8 @@ NOT                                     RETURN_TOKEN(NOT);
 LIKE                                    RETURN_TOKEN(LIKE);
 VALUES                                  RETURN_TOKEN(VALUES);
 ALIAS                                   RETURN_TOKEN(ALIAS);
+AS                                      RETURN_TOKEN(AS);
+VIEW                                    RETURN_TOKEN(VIEW);
 ASC                                     RETURN_TOKEN(ASC);
 ORDER                                   RETURN_TOKEN(ORDER);
 IS                                      RETURN_TOKEN(IS);

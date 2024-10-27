@@ -21,7 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/value.h"
 
 class Expression;
-
+class ParsedSqlNode;
 /**
  * @defgroup SQLParser SQL Parser
  */
@@ -214,6 +214,17 @@ struct AttrInfoSqlNode
   bool        nullable{false};
 };
 
+struct CreateViewSqlNode{
+  std::string view_name;
+  ParsedSqlNode * query;
+};
+
+struct CreateTableSelectSqlNode{
+  std::string relation_name;
+  ParsedSqlNode * query;
+};
+
+
 /**
  * @brief 描述一个create table语句
  * @ingroup SQLParser
@@ -330,6 +341,8 @@ enum SqlCommandFlag
   SCF_UPDATE,
   SCF_DELETE,
   SCF_CREATE_TABLE,
+  SCF_CREATE_TABLE_SELECT, // i.e.: create table t1 as select * from t2;
+  SCF_CREATE_VIEW, // i.e.: create view v as select * from t2;
   SCF_DROP_TABLE,
   SCF_CREATE_INDEX,
   SCF_DROP_INDEX,
@@ -361,6 +374,8 @@ public:
   DeleteSqlNode       deletion;
   UpdateSqlNode       update;
   CreateTableSqlNode  create_table;
+  CreateTableSelectSqlNode create_table_select;
+  CreateViewSqlNode create_view;
   DropTableSqlNode    drop_table;
   CreateIndexSqlNode  create_index;
   DropIndexSqlNode    drop_index;
