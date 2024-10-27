@@ -890,7 +890,7 @@ RC BplusTreeHandler::create(LogHandler &log_handler,
   // mtr.logger().init_header_page(header_frame, *file_header);
 
   header_frame->mark_dirty();
-  header_frame->unpin();
+  // header_frame->unpin();
   file_header_.operator=(*file_header);
   file_header_.attr_types = attr_types;
   file_header_.off_and_sizes = off_and_sizes;

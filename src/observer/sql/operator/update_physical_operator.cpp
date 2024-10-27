@@ -1,5 +1,6 @@
 #include "sql/operator/update_physical_operator.h"
 #include <unordered_set>
+#include "storage/trx/trx.h"
 RC  UpdatePhysicalOperator::open(Trx *trx) {
   RC rc = RC::SUCCESS;
   if (!children_.empty()) {
@@ -24,6 +25,7 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
       sub_query_indices_.insert({i, expr});
     }
   }
+  this->trx = trx;
   return rc;
 }
 RC UpdatePhysicalOperator::next() {
@@ -64,6 +66,7 @@ RC UpdatePhysicalOperator::next() {
     if (OB_SUCC(rc)) {
       auto tuple = static_cast<RowTuple*>(children_[0]->current_tuple());
       auto record = tuple->record();
+      trx->delete_record(table_, record);
       for (size_t i = 0; i < assignments_->size(); i++) {
         auto field = tb_meta.field((*assignments_)[i]->attr_name.c_str());
         rc = table_->set_value_to_record(record.data(), value_ptrs_[i], field);
@@ -71,7 +74,10 @@ RC UpdatePhysicalOperator::next() {
           return rc;
         }
       }
-      
+      rc = trx->insert_record(table_, record);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to insert record by transaction. rc=%s", strrc(rc));
+      }
       // for (size_t k = 0; k < assignments_->size(); ++k) {
       //   auto assign = (*assignments_)[k];
       //   auto field = tb_meta.field(assign->attr_name.c_str());
