@@ -2182,7 +2182,7 @@ yyreduce:
 
   case 51: /* null_def: %empty  */
 #line 482 "yacc_sql.y"
-  {
+  { // 默認是可以爲null的
     (yyval.number) = 1;
   }
 #line 2189 "yacc_sql.cpp"
@@ -2242,40 +2242,40 @@ yyreduce:
 
   case 60: /* insert_stmt: INSERT INTO ID VALUES LBRACE insert_val value_list RBRACE  */
 #line 503 "yacc_sql.y"
-    {
-      (yyval.sql_node) = new ParsedSqlNode(SCF_INSERT);
-      (yyval.sql_node)->insertion.relation_name = (yyvsp[-5].string);
-      if ((yyvsp[-1].value_list) != nullptr) {
-        (yyval.sql_node)->insertion.values.swap(*(yyvsp[-1].value_list));
-        delete (yyvsp[-1].value_list);
-      }
-      (yyval.sql_node)->insertion.values.emplace_back(*(yyvsp[-2].value));
-      std::reverse((yyval.sql_node)->insertion.values.begin(), (yyval.sql_node)->insertion.values.end());
-      delete (yyvsp[-2].value);
-      free((yyvsp[-5].string));
+  {
+    (yyval.sql_node) = new ParsedSqlNode(SCF_INSERT);
+    (yyval.sql_node)->insertion.relation_name = (yyvsp[-5].string);
+    if ((yyvsp[-1].value_list) != nullptr) {
+      (yyval.sql_node)->insertion.values.swap(*(yyvsp[-1].value_list));
+      delete (yyvsp[-1].value_list);
     }
+    (yyval.sql_node)->insertion.values.emplace_back(*(yyvsp[-2].value));
+    std::reverse((yyval.sql_node)->insertion.values.begin(), (yyval.sql_node)->insertion.values.end());
+    delete (yyvsp[-2].value);
+    free((yyvsp[-5].string));
+  }
 #line 2258 "yacc_sql.cpp"
     break;
 
   case 61: /* value_list: %empty  */
 #line 521 "yacc_sql.y"
-    {
-      (yyval.value_list) = nullptr;
-    }
+  {
+    (yyval.value_list) = nullptr;
+  }
 #line 2266 "yacc_sql.cpp"
     break;
 
   case 62: /* value_list: COMMA insert_val value_list  */
 #line 524 "yacc_sql.y"
-                                   { 
-      if ((yyvsp[0].value_list) != nullptr) {
-        (yyval.value_list) = (yyvsp[0].value_list);
-      } else {
-        (yyval.value_list) = new std::vector<Value>;
-      }
-      (yyval.value_list)->emplace_back(*(yyvsp[-1].value));
-      delete (yyvsp[-1].value);
+                                 { 
+    if ((yyvsp[0].value_list) != nullptr) {
+      (yyval.value_list) = (yyvsp[0].value_list);
+    } else {
+      (yyval.value_list) = new std::vector<Value>;
     }
+    (yyval.value_list)->emplace_back(*(yyvsp[-1].value));
+    delete (yyvsp[-1].value);
+  }
 #line 2280 "yacc_sql.cpp"
     break;
 

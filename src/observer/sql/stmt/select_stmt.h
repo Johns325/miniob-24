@@ -66,15 +66,15 @@ public:
   RC predicates_push_down(const char *table_name, std::vector<std::unique_ptr<Expression>>& predicates);
   RC remaining_predicates(std::vector<std::unique_ptr<Expression>>& predicates);
 private:
-  std::vector<Table *>                     tables_;
-  std::vector<std::unique_ptr<ConjunctionExpr>>join_expres_;
-  std::vector<std::unique_ptr<Expression>> query_expressions_;
-  std::vector<std::unique_ptr<Expression>> condition_expressions_;
-  FilterStmt                              *filter_stmt_ = nullptr;
-  std::list<SubQueryExpr*>                 sub_queries_;
-  std::vector<std::unique_ptr<Expression>> group_by_;
-  std::vector<std::unique_ptr<Expression>> having_;
-  OrderByStmt                             *order_by_stmt{nullptr};
+  std::vector<Table *>                     tables_; //查詢的表
+  std::vector<std::unique_ptr<ConjunctionExpr>>join_expres_; //join條件
+  std::vector<std::unique_ptr<Expression>> query_expressions_; //查詢表達式
+  std::vector<std::unique_ptr<Expression>> condition_expressions_; // where
+  FilterStmt                              *filter_stmt_ = nullptr; //
+  std::list<SubQueryExpr*>                 sub_queries_; // 包含的所以子查詢
+  std::vector<std::unique_ptr<Expression>> group_by_; // group by
+  std::vector<std::unique_ptr<Expression>> having_; // having
+  OrderByStmt                             *order_by_stmt{nullptr}; // order by
 
 };
 

@@ -28,8 +28,10 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/group_by_logical_operator.h"
 #include "sql/operator/update_logical_operator.h"
 #include "sql/operator/order_by_logical_operator.h"
+#include "sql/operator/create_select_logical_operator.h"
 
 #include "sql/stmt/calc_stmt.h"
+#include "sql/stmt/create_select_stmt.h"
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/explain_stmt.h"
 #include "sql/stmt/filter_stmt.h"
@@ -66,6 +68,10 @@ RC LogicalPlanGenerator::create(Stmt *stmt, unique_ptr<LogicalOperator> &logical
       rc = create_plan(insert_stmt, logical_operator);
     } break;
 
+    case StmtType::CREATE_TABLE_SELECT: {
+      rc = create_plan(static_cast<CreateTableSelectStmt*>(stmt), logical_operator);
+    } break;
+
     case StmtType::ORDER_BY: {
       OrderByStmt *order_stmt = static_cast<OrderByStmt*>(stmt);
       rc = create_plan(order_stmt, logical_operator);
@@ -91,6 +97,17 @@ RC LogicalPlanGenerator::create(Stmt *stmt, unique_ptr<LogicalOperator> &logical
     }
   }
   return rc;
+}
+
+RC LogicalPlanGenerator::create_plan(CreateTableSelectStmt *cts_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
+  unique_ptr<LogicalOperator> logical_oper;
+  auto rc = create(cts_stmt->sbu_query_stmt_, logical_oper);
+  if (!OB_SUCC(rc)) {
+    return rc;
+  }
+  logical_operator.reset(new CreateTableSelectLogicalOperator(cts_stmt->db_, cts_stmt->table_name_, std::move(cts_stmt->info_)));
+  logical_operator->add_child(std::move(logical_oper));
+  return RC::SUCCESS;
 }
 
 RC LogicalPlanGenerator::create_plan(OrderByStmt *order_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {

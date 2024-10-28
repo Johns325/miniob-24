@@ -287,7 +287,7 @@ sync_stmt:
       $$ = new ParsedSqlNode(SCF_SYNC);
     }
     ;
-alias_stmt:
+alias_stmt: // ok
   /* empty */
   {
     $$ = nullptr;
@@ -314,7 +314,7 @@ rollback_stmt:
     }
     ;
 
-drop_table_stmt:    /*drop table 语句的语法解析树*/
+drop_table_stmt:    /*drop table 语句的语法解析树*/ // ok
     DROP TABLE ID {
       $$ = new ParsedSqlNode(SCF_DROP_TABLE);
       $$->drop_table.relation_name = $3;
@@ -335,7 +335,7 @@ desc_table_stmt:
     }
     ;
 
-create_index_stmt:    /*create index 语句的语法解析树*/
+create_index_stmt:    /*create index 语句的语法解析树*/   //ok
     CREATE unique_stmt INDEX ID ON ID LBRACE ID attr_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
@@ -354,7 +354,7 @@ create_index_stmt:    /*create index 语句的语法解析树*/
       free($8);
     }
     ;
-unique_stmt:
+unique_stmt: // ok
   /* empty */
   {
     $$ = false;
@@ -362,7 +362,7 @@ unique_stmt:
   | UNIQUE {
     $$ = true;
   }
-attr_list:
+attr_list: // ok
   /* empty */
   {
     $$ = nullptr;
@@ -377,7 +377,7 @@ attr_list:
     free($2);
   }
 
-drop_index_stmt:      /*drop index 语句的语法解析树*/
+drop_index_stmt:      /*drop index 语句的语法解析树*/  //ok
     DROP INDEX ID ON ID
     {
       $$ = new ParsedSqlNode(SCF_DROP_INDEX);
@@ -427,7 +427,7 @@ create_view_stmt:
     free($3);
     view.query = $5;
   };
-as_stmt:
+as_stmt: //ok
   /* empty */
   {
     $$ = false;
@@ -436,7 +436,7 @@ as_stmt:
     $$ = true;
   };
 
-attr_def_list:
+attr_def_list: //ok
     /* empty */
     {
       $$ = nullptr;
@@ -453,7 +453,7 @@ attr_def_list:
     }
     ;
     
-attr_def:
+attr_def: //ok
     ID type LBRACE number RBRACE null_def
     {
       $$ = new AttrInfoSqlNode;
@@ -477,9 +477,9 @@ attr_def:
       $$->nullable = ($3 == 1);
     }
     ;
-null_def: // 0 stands not null and 1 stands for nullable
+null_def: // 0 stands not null and 1 stands for nullable  // ok
   /* empty */
-  {
+  { // 默認是可以爲null的
     $$ = 1;
   }
   | null {
@@ -499,39 +499,39 @@ type:
     | VECTOR_T { $$ = static_cast<int>(AttrType::VECTORS); }
     ;
 insert_stmt:        /*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE insert_val value_list RBRACE 
-    {
-      $$ = new ParsedSqlNode(SCF_INSERT);
-      $$->insertion.relation_name = $3;
-      if ($7 != nullptr) {
-        $$->insertion.values.swap(*$7);
-        delete $7;
-      }
-      $$->insertion.values.emplace_back(*$6);
-      std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
-      delete $6;
-      free($3);
+  INSERT INTO ID VALUES LBRACE insert_val value_list RBRACE 
+  {
+    $$ = new ParsedSqlNode(SCF_INSERT);
+    $$->insertion.relation_name = $3;
+    if ($7 != nullptr) {
+      $$->insertion.values.swap(*$7);
+      delete $7;
     }
-    ;
+    $$->insertion.values.emplace_back(*$6);
+    std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
+    delete $6;
+    free($3);
+  }
+  ;
 
 
 
-value_list:
-    /* empty */
-    {
-      $$ = nullptr;
+value_list: //ok
+  /* empty */
+  {
+    $$ = nullptr;
+  }
+  | COMMA insert_val value_list  { 
+    if ($3 != nullptr) {
+      $$ = $3;
+    } else {
+      $$ = new std::vector<Value>;
     }
-    | COMMA insert_val value_list  { 
-      if ($3 != nullptr) {
-        $$ = $3;
-      } else {
-        $$ = new std::vector<Value>;
-      }
-      $$->emplace_back(*$2);
-      delete $2;
-    }
-    ;
-insert_val:
+    $$->emplace_back(*$2);
+    delete $2;
+  }
+  ;
+insert_val: //ok
   value  {
     $$ = $1;
   }

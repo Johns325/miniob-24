@@ -44,6 +44,7 @@ enum class PhysicalOperatorType
   EXPLAIN,
   PREDICATE,
   PREDICATE_VEC,
+  CREATE_TABLE_SELECT,
   PROJECT,
   PROJECT_VEC,
   CALC,
