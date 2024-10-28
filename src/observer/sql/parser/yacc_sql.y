@@ -480,7 +480,7 @@ attr_def:
 null_def: // 0 stands not null and 1 stands for nullable
   /* empty */
   {
-    $$ = 0;
+    $$ = 1;
   }
   | null {
     $$ = 1;

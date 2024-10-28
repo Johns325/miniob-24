@@ -60,7 +60,7 @@ RC UpdatePhysicalOperator::next() {
       // case 3
       return RC::ASSIGNMENT_NULL_VALUE;
     }
-    value_ptrs_[pr.first] = std::move(values_from_sub_query[0]);
+    value_ptrs_[pr.first] = values_from_sub_query[0];
   }
   std::list<Record> delete_records;
   std::list<Record> insert_records;

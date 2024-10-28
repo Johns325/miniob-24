@@ -2183,7 +2183,7 @@ yyreduce:
   case 51: /* null_def: %empty  */
 #line 482 "yacc_sql.y"
   {
-    (yyval.number) = 0;
+    (yyval.number) = 1;
   }
 #line 2189 "yacc_sql.cpp"
     break;
