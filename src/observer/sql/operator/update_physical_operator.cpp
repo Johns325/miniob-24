@@ -16,8 +16,9 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
   for (size_t i = 0; i < assignments_->size(); i++) {
     Assignment * assign = (*assignments_)[i];
     if (assign->right_hand_side->type() == ExprType::VALUE) {
-      value_ptrs_[i] = static_cast<ValueExpr*>(assign->right_hand_side)->get_value();
-    } else {
+      auto value = static_cast<ValueExpr*>(assign->right_hand_side)->get_value();
+      value_ptrs_[i] = value;
+    } else if (assign->right_hand_side->type() == ExprType::SUB_QUERY) {
       auto expr = (static_cast<SubQueryExpr*>(assign->right_hand_side))->physical_sub_query_;
       TupleSchema schema;
       expr->tuple_schema(schema);
@@ -33,7 +34,7 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         auto tuple = expr->current_tuple();
         Value v;
         tuple->cell_at(0,v);
-        values_from_sub_query.emplace_back(std::move(v));
+        values_from_sub_query.emplace_back(v);
       }
       // if (rc != RC::RECORD_EOF) {
       //   return rc;
@@ -46,10 +47,10 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         // case 3
         return RC::ASSIGNMENT_NULL_VALUE;
       }
-      value_ptrs_[i] = values_from_sub_query[0];
+      value_ptrs_[i] = values_from_sub_query[i];
     }
   }
-  return rc;
+  return RC::SUCCESS;
 }
 RC UpdatePhysicalOperator::next() {
   RC rc = RC::SUCCESS;
