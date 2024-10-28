@@ -34,6 +34,28 @@ RC PredicatePhysicalOperator::open(Trx *trx)
   if (!OB_SUCC(rc)) {
     return rc;
   }
+  if (expression_->type() == ExprType::CONJUNCTION) {
+    auto conj_expr = static_cast<ConjunctionExpr*>(expression_.get());
+    for (auto& child : conj_expr->children()) {
+      if (child->type() == ExprType::COMPARISON) {
+        auto cmp_expr = static_cast<ComparisonExpr*>(child.get());
+        if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+        }
+        if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+        }
+      }
+    }
+  } else if (expression_->type() == ExprType::COMPARISON) {
+    auto cmp_expr = static_cast<ComparisonExpr*>(expression_.get());
+    if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+    }
+    if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+    }
+  }
   // for (auto query : sub_queries_) {
   //   rc = query->physical_sub_query_->open(trx);
   //   if (!OB_SUCC(rc)) {

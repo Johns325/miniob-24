@@ -118,7 +118,7 @@ private:
 
 private:
   RC init_record_handler(const char *base_dir);
-
+  bool record_contains_null(const char* record, const IndexMeta& meta);
 public:
   Index *find_index(const char *index_name) const;
   Index *find_index_by_field(const char *field_name) const;

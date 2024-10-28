@@ -487,10 +487,23 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
+bool Table::record_contains_null(const char* record, const IndexMeta& meta) {
+  for (auto field_name : meta.fields()) {
+    auto meta = table_meta_.field(field_name.c_str());
+    if (meta->nullable() && 1 == (*static_cast<const char*>(record + meta->offset() + meta->len()))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
+    if (record_contains_null(record, index->index_meta())) {
+      continue;
+    }
     rc = index->insert_entry(record, &rid);
     if (rc != RC::SUCCESS) {
       break;

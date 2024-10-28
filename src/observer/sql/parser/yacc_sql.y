@@ -954,6 +954,11 @@ condition:
       std::unique_ptr<Expression> right(new SubQueryExpr($4));
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
+    | LBRACE select_stmt RBRACE comp_op LBRACE select_stmt RBRACE {
+      std::unique_ptr<Expression> left(new SubQueryExpr($2));
+      std::unique_ptr<Expression> right(new SubQueryExpr($6));
+      $$ = new ComparisonExpr($4, std::move(left), std::move(right));
+    }
     | null_condition {
       $$ = $1;
     }

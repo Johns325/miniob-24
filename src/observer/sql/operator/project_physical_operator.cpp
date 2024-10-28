@@ -27,23 +27,24 @@ ProjectPhysicalOperator::ProjectPhysicalOperator(vector<unique_ptr<Expression>> 
 
 RC ProjectPhysicalOperator::open(Trx *trx)
 {
-  if (children_.empty()) {
-    return RC::SUCCESS;
-  }
-
-  PhysicalOperator *child = children_[0].get();
-  RC                rc    = child->open(trx);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open child operator: %s", strrc(rc));
-    return rc;
-  }
-  // 對所有子查詢執行open
+  RC rc {RC::SUCCESS};
   for (auto query : sub_queries_) {
     rc = query->get_physical_operator()->open(trx);
     if (!OB_SUCC(rc)) {
       return rc;
     }
   }
+  if (children_.empty()) {
+    return RC::SUCCESS;
+  }
+
+  PhysicalOperator *child = children_[0].get();
+  rc    = child->open(trx);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open child operator: %s", strrc(rc));
+    return rc;
+  }
+  // 對所有子查詢執行open
   return RC::SUCCESS;
 }
 
