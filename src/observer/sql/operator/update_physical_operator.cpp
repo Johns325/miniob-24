@@ -62,12 +62,18 @@ RC UpdatePhysicalOperator::next() {
     }
     value_ptrs_[pr.first] = std::move(values_from_sub_query[0]);
   }
+  std::list<Record> delete_records;
+  std::list<Record> insert_records;
   while ((rc = children_[0]->next()) == RC::SUCCESS) {
     if (OB_SUCC(rc)) {
       auto tuple = static_cast<RowTuple*>(children_[0]->current_tuple());
       auto record = tuple->record();
       // trx->delete_record(table_, record);
-      table_->delete_record(record);
+      Record old_record;
+      old_record.copy_data(record.data(), record.len());
+      old_record.set_rid(record.rid());
+      rc = table_->delete_record(record);
+      delete_records.push_back(std::move(old_record));
       for (size_t i = 0; i < assignments_->size(); i++) {
         auto field = tb_meta.field((*assignments_)[i]->attr_name.c_str());
         rc = table_->set_value_to_record(record.data(), value_ptrs_[i], field);
@@ -75,10 +81,21 @@ RC UpdatePhysicalOperator::next() {
           return rc;
         }
       }
+      Record new_one;
+      new_one.copy_data(record.data(), record.len());
+      new_one.set_rid(record.rid());
       rc = table_->insert_record(record);
       if (rc != RC::SUCCESS) {
         LOG_WARN("failed to insert record by transaction. rc=%s", strrc(rc));
+        if (rc == RC::RECORD_DUPLICATE_KEY) {
+          for (auto &r : insert_records)
+            table_->delete_record(r);
+          for (auto &r : delete_records)
+            table_->insert_record(r);
+        }
+        return RC::INTERNAL;
       }
+      insert_records.push_back(new_one);
       // for (size_t k = 0; k < assignments_->size(); ++k) {
       //   auto assign = (*assignments_)[k];
       //   auto field = tb_meta.field(assign->attr_name.c_str());
