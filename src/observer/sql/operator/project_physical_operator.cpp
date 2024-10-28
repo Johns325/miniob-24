@@ -52,11 +52,7 @@ RC ProjectPhysicalOperator::next()
   if (children_.empty()) {
     return RC::RECORD_EOF;
   }
-  auto rc = children_[0]->next();
-  if (rc != RC::SUCCESS && rc != RC::RECORD_EOF) {
-    close();
-  }
-  return rc;
+  return children_[0]->next();
 }
 
 RC ProjectPhysicalOperator::close()
