@@ -352,14 +352,15 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   /* ******************************************************{bind_having}*******************************************************************/ 
   // having 中只能有出现在select后面的聚合表达式以及出现在group by后面的字段
   vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
-  // if (nullptr != select_sql.having) {
-  //   for (auto &expr : *select_sql.having) {
-  //     rc = expression_binder->bind_expression(expr, bound_having_expressions);
-  //     if (!OB_SUCC(rc)) {
-  //       return rc;
-  //     }
-  //   }
-  // }
+  if (nullptr != select_sql.having) {
+    for (auto &expr : *select_sql.having) {
+      std::unique_ptr<Expression> uniq_expr(expr);
+      rc = expression_binder->bind_expression(uniq_expr, bound_having_expressions);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+    }
+  }
 
   /* ******************************************************{bind_order_by}*******************************************************************/ 
   OrderByStmt *order_by_stmt = nullptr;
@@ -375,6 +376,9 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
   // 這個sub_queris list中包含了where和on後面的所有子查詢。
   if (!expression_binder->sub_queries().empty()) {
     sel_stmt->set_sub_queries(expression_binder->sub_queries());
+  }
+  if (!bound_having_expressions.empty()) {
+    sel_stmt->set_having(std::move(bound_having_expressions));
   }
   stmt = sel_stmt;
   return RC::SUCCESS;

@@ -194,9 +194,6 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
     last_oper = &group_by_oper;
   }
-  if (!select_stmt->having_.empty()) {
-    
-  }
 
   unique_ptr<LogicalOperator> order_by_oper;
   if (select_stmt->order_by_stmt != nullptr) {
@@ -393,6 +390,7 @@ RC LogicalPlanGenerator::create_group_by_plan(SelectStmt *select_stmt, unique_pt
   vector<unique_ptr<Expression>> &group_by_expressions = select_stmt->group_by();
   vector<Expression *> aggregate_expressions;
   vector<unique_ptr<Expression>> &query_expressions = select_stmt->query_expressions();
+  vector<unique_ptr<Expression>> &having_expressions = select_stmt->having_;
   function<RC(std::unique_ptr<Expression>&)> collector = [&](unique_ptr<Expression> &expr) -> RC {
     RC rc = RC::SUCCESS;
     if (expr->type() == ExprType::AGGREGATION) {
@@ -453,6 +451,11 @@ RC LogicalPlanGenerator::create_group_by_plan(SelectStmt *select_stmt, unique_pt
     return RC::SUCCESS;
   }
 
+  auto size = aggregate_expressions.size();
+  for (auto &expr : having_expressions) {
+    collector(expr);
+  }
+  size = aggregate_expressions.size() - size;
   if (found_unbound_column) {
     LOG_WARN("column must appear in the GROUP BY clause or must be part of an aggregate function");
     return RC::INVALID_ARGUMENT;
@@ -462,6 +465,12 @@ RC LogicalPlanGenerator::create_group_by_plan(SelectStmt *select_stmt, unique_pt
 
   auto group_by_oper = make_unique<GroupByLogicalOperator>(std::move(group_by_expressions),
                                                            std::move(aggregate_expressions));
+  if (size != 0) {
+    group_by_oper->set_having_aggregation_size(aggregate_expressions.size() - size);
+  }
+  if (!select_stmt->having_.empty()) {
+    group_by_oper->set_having_expressions(std::move(select_stmt->having_));
+  }
   logical_operator = std::move(group_by_oper);
   return RC::SUCCESS;
 }

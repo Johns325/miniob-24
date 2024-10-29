@@ -24,9 +24,12 @@ See the Mulan PSL v2 for more details. */
 class GroupByPhysicalOperator : public PhysicalOperator
 {
 public:
+  friend class PhysicalPlanGenerator;
   GroupByPhysicalOperator(std::vector<Expression *> &&expressions);
   virtual ~GroupByPhysicalOperator() = default;
   void set_always_false() {always_false = true;}
+  auto set_having_aggregation_size(size_t sz) {aggregations_in_having_ = sz;}
+  
 protected:
   using AggregatorList = std::vector<std::unique_ptr<Aggregator>>;
   /**
@@ -55,4 +58,6 @@ protected:
   std::vector<Expression *> aggregate_expressions_;  /// 聚合表达式
   std::vector<Expression *> value_expressions_;      /// 计算聚合时的表达式
   bool always_false{false};
+  size_t  aggregations_in_having_{0};      // 表面having中有多少aggregation
+  std::vector<unique_ptr<Expression>> havings_;
 };

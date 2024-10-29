@@ -48,6 +48,7 @@ private:
 
 private:
   RC find_group(const Tuple &child_tuple, GroupType *&found_group);
+  RC filter(CompositeTuple &tuple, bool &result);
 
 private:
   std::vector<std::unique_ptr<Expression>> group_by_exprs_;
@@ -56,7 +57,7 @@ private:
   /// pair的first是group by 的值列表，second是计算出来的表达式值列表
   /// TODO 改成hash/unordered_map
   std::vector<GroupType> groups_;
-
+  std::vector<GroupType> results_;
   std::vector<GroupType>::iterator current_group_;
   bool                             first_emited_ = false;  /// 第一条数据是否已经输出
 };

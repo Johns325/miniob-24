@@ -81,6 +81,7 @@ RC HashGroupByPhysicalOperator::open(Trx *trx)
   }
 
   // 得到最终聚合后的值
+  
   for (GroupType &group : groups_) {
     GroupValueType &group_value = get<1>(group);
     rc = evaluate(group_value);
@@ -88,8 +89,17 @@ RC HashGroupByPhysicalOperator::open(Trx *trx)
       LOG_WARN("failed to evaluate group value. rc=%s", strrc(rc));
       return rc;
     }
+    auto& tuple = get<1>(group_value);
+    bool result{false};
+    rc = filter(tuple, result);
+    if (rc != RC::SUCCESS) {
+      LOG_TRACE("record filtered failed=%s", strrc(rc));
+      return rc;
+    }
+    if (result)
+      results_.emplace_back(std::move(group));
   }
-
+  groups_.swap(results_);
   current_group_ = groups_.begin();
   first_emited_  = false;
   return rc;
@@ -178,5 +188,27 @@ RC HashGroupByPhysicalOperator::find_group(const Tuple &child_tuple, GroupType *
     found_group = &groups_.back();
   }
 
+  return rc;
+}
+
+
+RC HashGroupByPhysicalOperator::filter(CompositeTuple &tuple, bool &result)
+{
+  RC    rc = RC::SUCCESS;
+  Value value;
+  for (unique_ptr<Expression> &expr : havings_) {
+    rc = expr->get_value(tuple, value);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+
+    bool tmp_result = value.get_boolean();
+    if (!tmp_result) {
+      result = false;
+      return rc;
+    }
+  }
+
+  result = true;
   return rc;
 }

@@ -61,6 +61,7 @@ public:
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
   void set_order_by_stmt(OrderByStmt* stmt) {order_by_stmt = stmt;}
+  void set_having(vector<unique_ptr<Expression>>&& having) { having_ = std::move(having);}
   std::vector<std::unique_ptr<Expression>> &query_expressions() { return query_expressions_; }
   std::vector<std::unique_ptr<Expression>> &group_by() { return group_by_; }
   RC predicates_push_down(const char *table_name, std::vector<std::unique_ptr<Expression>>& predicates);

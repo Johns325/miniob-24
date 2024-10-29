@@ -443,6 +443,10 @@ RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &logical_oper, std:
     group_by_oper = make_unique<HashGroupByPhysicalOperator>(std::move(logical_oper.group_by_expressions()),
         std::move(logical_oper.aggregate_expressions()));
   }
+  group_by_oper->set_having_aggregation_size(logical_oper.aggregations_in_having());
+  if (logical_oper.has_having()) {
+    group_by_oper->havings_ = std::move(logical_oper.having_expressions_);
+  }
   if (logical_oper.children().empty()) {
     group_by_oper->set_always_false();
     return RC::SUCCESS;

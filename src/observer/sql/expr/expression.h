@@ -279,7 +279,7 @@ public:
   SubQueryExpr() = default;
   explicit SubQueryExpr(ParsedSqlNode* sql_node) : sql_node_(sql_node){}
   ExprType type() const override { return ExprType::SUB_QUERY; }
-  AttrType value_type() const override { return AttrType::UNDEFINED; }
+  AttrType value_type() const override { return (select_stmt_->query_expressions().front())->value_type(); }
   int      value_length() const override { return 0; }
   RC get_value(const Tuple &tuple, Value &value) const override { return RC::SUCCESS; }
   auto get_sql_node() -> ParsedSqlNode* { return sql_node_;}

@@ -37,8 +37,7 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
     // TODO add support of updating multiple fields simultaneously.
-    // if(assign->right_hand_side->type() != ExprType::VALUE)
-    //   continue;
+    
     if (assign->right_hand_side->type() == ExprType::SUB_QUERY) {
       Stmt * stmt;
       auto sub_query_expr = static_cast<SubQueryExpr*>(assign->right_hand_side); 

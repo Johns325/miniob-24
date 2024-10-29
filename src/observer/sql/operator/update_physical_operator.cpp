@@ -73,7 +73,9 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
     for (size_t i = 0; i < assignments_->size(); i++) {
       auto field = tb_meta.field((*assignments_)[i]->attr_name.c_str());
       Value real_value;
-      if (value_ptrs_[i].attr_type() == field->type()) {
+      if (value_ptrs_[i].is_null()) {
+        real_value.set_null();
+      } else if (value_ptrs_[i].attr_type() == field->type()) {
         real_value = value_ptrs_[i];
       } else {
         Value::cast_to(value_ptrs_[i], field->type(), real_value);
