@@ -54,6 +54,25 @@ RC FloatType::divide(const Value &left, const Value &right, Value &result) const
   return RC::SUCCESS;
 }
 
+RC FloatType::cast_to(const Value &val, AttrType type, Value &result) const {
+  switch (type)
+  {
+  case AttrType::INTS: {
+    auto int_val = static_cast<int>(val.get_float());
+    result.set_int(int_val);
+  } break;
+  case AttrType::CHARS: {
+    auto str = std::to_string(val.get_float());
+    result.set_string(str.c_str(), str.length());
+  } break;
+  
+  default: {
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  } break;
+  }
+  return RC::SUCCESS;
+}
+
 RC FloatType::negative(const Value &val, Value &result) const
 {
   result.set_float(-val.get_float());

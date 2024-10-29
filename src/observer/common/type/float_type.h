@@ -23,7 +23,7 @@ public:
   virtual ~FloatType() = default;
 
   int compare(const Value &left, const Value &right) const override;
-
+  RC cast_to(const Value &val, AttrType type, Value &result) const ;
   RC add(const Value &left, const Value &right, Value &result) const override;
   RC subtract(const Value &left, const Value &right, Value &result) const override;
   RC multiply(const Value &left, const Value &right, Value &result) const override;
