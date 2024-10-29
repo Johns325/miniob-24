@@ -58,8 +58,8 @@ RC FloatType::cast_to(const Value &val, AttrType type, Value &result) const {
   switch (type)
   {
   case AttrType::INTS: {
-    auto int_val = static_cast<int>(val.get_float());
-    result.set_int(int_val);
+    auto float_val = val.get_float();
+    result.set_int(std::round(float_val));
   } break;
   case AttrType::CHARS: {
     auto str = std::to_string(val.get_float());
