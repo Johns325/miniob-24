@@ -51,7 +51,7 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         // case 3
         invalid_ = true;
       }
-      value_ptrs_[i] = values_from_sub_query[i];
+      value_ptrs_[i] = values_from_sub_query[0];
     }
   }
 
