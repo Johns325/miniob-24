@@ -72,7 +72,13 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
     delete_records.push_back(std::move(old_record));
     for (size_t i = 0; i < assignments_->size(); i++) {
       auto field = tb_meta.field((*assignments_)[i]->attr_name.c_str());
-      rc = table_->set_value_to_record(record.data(), value_ptrs_[i], field);
+      Value real_value;
+      if (value_ptrs_[i].attr_type() == field->type()) {
+        real_value = value_ptrs_[i];
+      } else {
+        Value::cast_to(value_ptrs_[i], field->type(), real_value);
+      }
+      rc = table_->set_value_to_record(record.data(), real_value, field);
       if (!OB_SUCC(rc)) {
         return rc;
       }
