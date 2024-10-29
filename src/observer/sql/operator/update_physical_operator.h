@@ -26,6 +26,7 @@ private:
   std::vector<Value> value_ptrs_;
   std::unordered_map<size_t,PhysicalOperator*> sub_query_indices_;
   Trx * trx{nullptr};
+  bool invalid_{false};
   // std::string attr_name_;
   // RowTuple tuple_;
   // int value_amount_;

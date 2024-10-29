@@ -3,14 +3,20 @@
 #include "storage/trx/trx.h"
 RC  UpdatePhysicalOperator::open(Trx *trx) {
   RC rc = RC::SUCCESS;
-  if (!children_.empty()) {
-    auto child = children_[0].get();
-    rc = child->open(trx);
-    if (OB_FAIL(rc)) {
-      LOG_ERROR("failed to open update phy operator's child operator:%s", strrc(rc));
-      return rc;
-    }
+  if (children_.empty()) {
+    return RC::SUCCESS;
   }
+  auto child = children_[0].get();
+  rc = child->open(trx);
+  if (OB_FAIL(rc)) {
+    LOG_ERROR("failed to open update phy operator's child operator:%s", strrc(rc));
+    return rc;
+  }
+  // 先從所有的子查詢獲取到結果.
+  // case1. 子查詢返回多列
+  // case2. 子查詢返回多個值
+  // case3. 子查詢返回null 但是某一額column不允許null
+  // case1 應該直接返回false 而 case2 和case3再發現有值時才返回false，如果外部查詢沒有值則返回SUCCESS
   auto tb_meta = table_->table_meta();
   value_ptrs_.resize(assignments_->size());
   for (size_t i = 0; i < assignments_->size(); i++) {
@@ -36,33 +42,26 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         tuple->cell_at(0,v);
         values_from_sub_query.emplace_back(v);
       }
-      // if (rc != RC::RECORD_EOF) {
-      //   return rc;
-      // }
       expr->close();
       if (values_from_sub_query.size() > 1) {
         // case 2
-        return RC::SUB_QUERY_RETURNS_MULTIPLE_VALUES;
+        invalid_  = true;
+        break;
       } else if (values_from_sub_query.empty() && !tb_meta.field((*assignments_)[i]->attr_name.c_str())->nullable()) {
         // case 3
-        return RC::ASSIGNMENT_NULL_VALUE;
+        invalid_ = true;
       }
       value_ptrs_[i] = values_from_sub_query[i];
     }
   }
-  return RC::SUCCESS;
-}
-RC UpdatePhysicalOperator::next() {
-  RC rc = RC::SUCCESS;
-  auto tb_meta = table_->table_meta();
-  
-  // 先從所有的子查詢獲取到結果.
-  // case1. 子查詢返回多列
-  // case2. 子查詢返回多個值
-  // case3. 子查詢返回null 但是某一額column不允許null
+
+
   std::list<Record> delete_records;
   std::list<Record> insert_records;
   while ((rc = children_[0]->next()) == RC::SUCCESS) {
+    if (invalid_) {
+      return RC::INTERNAL;
+    }
     auto tuple = static_cast<RowTuple*>(children_[0]->current_tuple());
     auto record = tuple->record();
     // trx->delete_record(table_, record);
@@ -94,7 +93,10 @@ RC UpdatePhysicalOperator::next() {
     }
     insert_records.push_back(new_one);
   }
-  return rc;
+  return RC::SUCCESS;
+}
+RC UpdatePhysicalOperator::next() {
+  return RC::RECORD_EOF;
 }
 RC UpdatePhysicalOperator::close() {
   children_[0]->close();
