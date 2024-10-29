@@ -47,11 +47,16 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         // case 2
         invalid_  = true;
         break;
-      } else if (values_from_sub_query.empty() && !tb_meta.field((*assignments_)[i]->attr_name.c_str())->nullable()) {
+      } else if (values_from_sub_query.empty() ) {
         // case 3
-        invalid_ = true;
+        if (!tb_meta.field((*assignments_)[i]->attr_name.c_str())->nullable()) {
+          invalid_ = true;
+        } else {
+          value_ptrs_[i].set_null();
+        }
+      } else {
+        value_ptrs_[i] = values_from_sub_query[0];
       }
-      value_ptrs_[i] = values_from_sub_query[0];
     }
   }
 
