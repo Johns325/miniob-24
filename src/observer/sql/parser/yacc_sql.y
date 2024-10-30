@@ -416,9 +416,28 @@ create_select_stmt:
     auto &table = $$->create_table_select;
     table.relation_name =string($3);
     free($3);
+    table.has_schema = false;
     table.query = $5;
-  };
+  }
+  | CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE as_stmt select_stmt {
+    $$ = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
+    auto &table = $$->create_table_select;
+    table.relation_name =string($3);
+    free($3);
+    table.has_schema = true;
 
+    std::vector<AttrInfoSqlNode> *src_attrs = $6;
+
+    if (src_attrs != nullptr) {
+      table.attr_infos.swap(*src_attrs);
+      delete src_attrs;
+    }
+    table.attr_infos.emplace_back(*$5);
+    delete $5;
+    std::reverse(table.attr_infos.begin(), table.attr_infos.end());
+    table.query = $9;
+  }
+  ;
 create_view_stmt:
   CREATE VIEW ID as_stmt  select_stmt  {
     $$ = new ParsedSqlNode(SCF_CREATE_VIEW);

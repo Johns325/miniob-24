@@ -43,7 +43,7 @@ RC PredicatePhysicalOperator::open(Trx *trx)
           cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
         }
         if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
-          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
         }
       }
     }
@@ -53,7 +53,7 @@ RC PredicatePhysicalOperator::open(Trx *trx)
       cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
     }
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
-      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
     }
   }
   // for (auto query : sub_queries_) {

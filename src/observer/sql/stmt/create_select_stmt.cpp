@@ -32,6 +32,10 @@ RC CreateTableSelectStmt::create(Db *db, CreateTableSelectSqlNode &create_table,
     return rc;
   }
   auto select_stmt = static_cast<SelectStmt*>(sel_stmt);
+  if (create_table.has_schema) {
+    stmt = new CreateTableSelectStmt(db, create_table.relation_name, sel_stmt, std::move(create_table.attr_infos));
+    return RC::SUCCESS;
+  }
   auto &expresssions = select_stmt->query_expressions();
   std::vector<AttrInfoSqlNode> infos(expresssions.size());
   int i = 0;
