@@ -2091,7 +2091,7 @@ yyreduce:
   case 43: /* create_select_stmt: CREATE TABLE ID as_stmt select_stmt  */
 #line 414 "yacc_sql.y"
                                         {
-    (yyval.sql_node) = new ParsedSqlNode(SCF_CREATE_VIEW);
+    (yyval.sql_node) = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
     auto &table = (yyval.sql_node)->create_table_select;
     table.relation_name =string((yyvsp[-2].string));
     free((yyvsp[-2].string));
@@ -2103,7 +2103,7 @@ yyreduce:
   case 44: /* create_view_stmt: CREATE VIEW ID as_stmt select_stmt  */
 #line 423 "yacc_sql.y"
                                        {
-    (yyval.sql_node) = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
+    (yyval.sql_node) = new ParsedSqlNode(SCF_CREATE_VIEW);
     auto &view = (yyval.sql_node)->create_view;
     view.view_name =string((yyvsp[-2].string));
     free((yyvsp[-2].string));

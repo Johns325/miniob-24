@@ -42,21 +42,15 @@ RC CreateTableSelectPhysicalOperator::open(Trx *trx)
   child->tuple_schema(schema);
   while ((rc = child->next()) == RC::SUCCESS) {
     auto tuple = child->current_tuple();
-    char *data = new char[meta.record_size()];
+    // char *data = new char[meta.record_size()];
+    std::vector<Value>values;
     for (int i = 0; i < schema.cell_num(); i++) {
       Value v;
       tuple->cell_at(i, v);
-      auto field = meta.field(i);
-      if (v.attr_type() == AttrType::NULLS) {
-        if (!field->nullable())
-          return RC::INTERNAL;
-        *static_cast<char*>(data + field->offset() + field->len()) = 1; // set null
-      } else {
-        memcpy(data + field->offset(), v.data(), v.length());
-      }
+      values.emplace_back(v);
     }
     Record r;
-    r.set_data_owner(data, meta.record_size());
+    table->make_record(values.size(), values.data(), r);
     rc = table->insert_record(r);
     if (!OB_SUCC(rc)) {
       return rc;

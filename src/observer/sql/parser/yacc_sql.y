@@ -412,7 +412,7 @@ create_table_stmt:    /*create table 语句的语法解析树*/
     ;
 create_select_stmt:
   CREATE TABLE ID as_stmt  select_stmt  {
-    $$ = new ParsedSqlNode(SCF_CREATE_VIEW);
+    $$ = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
     auto &table = $$->create_table_select;
     table.relation_name =string($3);
     free($3);
@@ -421,7 +421,7 @@ create_select_stmt:
 
 create_view_stmt:
   CREATE VIEW ID as_stmt  select_stmt  {
-    $$ = new ParsedSqlNode(SCF_CREATE_TABLE_SELECT);
+    $$ = new ParsedSqlNode(SCF_CREATE_VIEW);
     auto &view = $$->create_view;
     view.view_name =string($3);
     free($3);

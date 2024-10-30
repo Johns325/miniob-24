@@ -143,7 +143,7 @@ RC PhysicalPlanGenerator::create_plan(CreateTableSelectLogicalOperator &logical_
   RC rc{RC::SUCCESS};
   if (!logical_oper.children().empty()) {
     auto child = logical_oper.children().front().get();
-    rc = create(*child, oper);
+    rc = create(*child, child_oper);
     if (!OB_SUCC(rc)) {
       return rc;
     }

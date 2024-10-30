@@ -27,26 +27,7 @@ enum class AttrType : int32_t
   MAXTYPE,   ///< 请在 UNDEFINED 与 MAXTYPE 之间增加新类型
 };
 
-// static int default_attr_length(AttrType type) {
-//   switch (type) {
-//     case AttrType::CHARS:
-//     case AttrType::INTS:
-//     case AttrType::FLOATS:
-//     case AttrType::DATES: {
-//       return 4;
-//     } break;
-//     case AttrType::BOOLEANS: {
-//       return 1;
-//     }
-//     case AttrType::VECTORS: {
-//       // TODO 
-//       return 65535;
-//     };
-//     default: {
-//       return -1;
-//     }
-//   }
-// }
+
 
 const char *attr_type_to_string(AttrType type);
 AttrType    attr_type_from_string(const char *s);
