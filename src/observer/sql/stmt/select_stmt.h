@@ -53,7 +53,7 @@ public:
   void set_sub_queries(std::list<SubQueryExpr*>& other);
   std::list<SubQueryExpr*>& sub_queries() { return sub_queries_;}
 public:
-  static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt);
+  static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, std::vector<Table*>*tables = nullptr);
   
 private:
   

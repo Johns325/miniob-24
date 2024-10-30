@@ -298,14 +298,16 @@ void SelectStmt::set_sub_queries(std::list<SubQueryExpr*>& other) {
 // bind_where
 // bind_group_by
 // bind_order_by
-RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
+RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, std::vector<Table*>*bound_tables)
 {
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
     return RC::INVALID_ARGUMENT;
   }
-
   BinderContext binder_context;
+  if (bound_tables != nullptr) {
+    binder_context.set_tables(bound_tables);
+  }
   vector<Table *>                tables;
   unordered_map<string, Table *> table_map;
   unordered_map<string, string> alias_to_tb_name;
@@ -333,9 +335,17 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
     return rc;
   }
   // 在這裏爲所有的子查詢建立SelectStmt
+  std::vector<Table*> all_tables;
+  for (auto t : tables)
+    all_tables.emplace_back(t);
+  if (bound_tables != nullptr) {
+    for (auto t : *bound_tables) {
+      all_tables.emplace_back(t);
+    }
+  }
   for (auto query : expression_binder->sub_queries()) {
     Stmt* select_stmt;
-    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt);
+    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, &all_tables);
     if (!OB_SUCC(rc)) {
       return rc;
     }

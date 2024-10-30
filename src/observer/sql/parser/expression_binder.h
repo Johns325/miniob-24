@@ -21,17 +21,20 @@ See the Mulan PSL v2 for more details. */
 class BinderContext
 {
 public:
+  friend class ExpressionBinder;
   BinderContext()          = default;
   virtual ~BinderContext() = default;
 
   void add_table(Table *table) { query_tables_.push_back(table); }
 
   Table *find_table(const char *table_name) const;
-
+  Table *find_in_bound_tables(const char*table_name);
+  auto set_tables(std::vector<Table*>*tables) {tables_in_outer_query_ = tables;}
   const std::vector<Table *> &query_tables() const { return query_tables_; }
 
 private:
   std::vector<Table *> query_tables_;
+  std::vector<Table*>* tables_in_outer_query_;
 };
 
 /**

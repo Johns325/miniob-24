@@ -32,6 +32,11 @@ Table *BinderContext::find_table(const char *table_name) const
   }
   return *iter;
 }
+Table *BinderContext::find_in_bound_tables(const char*table_name) {
+  auto pred = [table_name](Table*table) { return 0 == strcasecmp(table_name, table->name()); };
+  auto iter = ranges::find_if(*tables_in_outer_query_, pred);
+  return (iter == tables_in_outer_query_->end() ? nullptr : *iter);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions, bool more_than_one_table)
@@ -171,8 +176,15 @@ RC ExpressionBinder::bind_unbound_field_expression(
   } else {
     table = context_.find_table(table_name);
     if (nullptr == table) {
-      LOG_INFO("no such table in from list: %s", table_name);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
+      if (nullptr == context_.tables_in_outer_query_) {  
+        LOG_INFO("no such table in from list: %s", table_name);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
+      table = context_.find_in_bound_tables(table_name);
+      if (nullptr == context_.tables_in_outer_query_) {  
+        LOG_INFO("no such table in from list: %s", table_name);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
     }
   }
 
