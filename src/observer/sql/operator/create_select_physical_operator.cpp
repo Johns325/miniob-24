@@ -19,8 +19,30 @@ See the Mulan PSL v2 for more details. */
 #include "storage/db/db.h"
 #include "storage/table/table_meta.h"
 
+RC CreateTableSelectPhysicalOperator::pre_process() {
+  std::unordered_map<std::string, size_t> col_names;
+  for(size_t i = 0; i < infos_.size();++i) {
+    auto &info = infos_[i];
+    auto name = info.name;
+    auto pos = name.find('.');
+    if (pos != string::npos) {
+      auto col_name = name.substr(pos + 1);
+      if (!col_name.empty() && col_names.end() == col_names.find(col_name)) {
+        col_names.insert({col_name, i});
+      }
+    }
+  }
+  if (col_names.size() == infos_.size()) {
+    for(auto &pr : col_names) {
+      infos_[pr.second].name = pr.first;
+    }
+  }
+  return RC::SUCCESS;
+}
+
 RC CreateTableSelectPhysicalOperator::open(Trx *trx)
 {
+  pre_process();
   auto table = db_->find_table(table_name_.c_str());
   if (table != nullptr) {
     return RC::SCHEMA_TABLE_EXIST;

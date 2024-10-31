@@ -37,6 +37,7 @@ public:
   RC close() override;
 
   Tuple *current_tuple() override { return nullptr; }
+  RC pre_process();
 
 private:
   Db              *db_ = nullptr;
