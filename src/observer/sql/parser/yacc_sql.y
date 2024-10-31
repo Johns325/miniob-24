@@ -292,7 +292,7 @@ alias_stmt: // ok
   {
     $$ = nullptr;
   }
-  | ALIAS ID {
+  | AS ID {
     $$ = $2;
   }
   ;
