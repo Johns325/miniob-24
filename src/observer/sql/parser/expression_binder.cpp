@@ -41,9 +41,9 @@ static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expres
     Field      field(table, table_meta.field(i));
     FieldExpr *field_expr = new FieldExpr(field);
     field_expr->set_name(field.field_name());
-    if (more_than_one_table) {
-      field_expr->set_alias(string(table->name()) + "." + field.field_name());
-    }
+    // if (more_than_one_table) {
+    //   field_expr->set_alias(string(table->name()) + "." + field.field_name());
+    // }
     expressions.emplace_back(field_expr);
   }
 }
