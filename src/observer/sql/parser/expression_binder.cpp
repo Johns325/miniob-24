@@ -286,7 +286,51 @@ RC ExpressionBinder::bind_comparison_expression(
   if (right.get() != right_expr.get()) {
     right_expr.reset(right.release());
   }
-
+  FieldExpr *field_expr{nullptr};
+  ValueExpr *val_expr{nullptr};
+  
+  if (left_expr->type() == ExprType::FIELD && right_expr->type() == ExprType::VALUE) {
+    field_expr = static_cast<FieldExpr*>(left_expr.get());
+    val_expr = static_cast<ValueExpr*>(right_expr.get());
+  } else if (left_expr->type() == ExprType::VALUE && right_expr->type() == ExprType::FIELD) {
+    field_expr = static_cast<FieldExpr*>(right_expr.get());
+    val_expr = static_cast<ValueExpr*>(left_expr.get());
+  }
+  if (field_expr && val_expr) {
+    auto field = field_expr->field().meta();
+    auto val = val_expr->get_value();
+    if (!field->nullable()) {
+      // field is not null while insert value is null.
+      if (val.is_null())
+        return RC::FIELD_NOT_NULLABLE;
+      if (field_expr->field().attr_type() == AttrType::DATES) {
+      
+        if (val_expr->value_type() != AttrType::CHARS) {
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+        int date_val{0};
+        std::string date_str(val_expr->get_value().data());
+        if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+          return rc;
+        }
+        val_expr->get_value().set_date(date_val);
+      }
+    } else {
+      if (!val.is_null()) {
+        if (field_expr->field().attr_type() == AttrType::DATES) {
+          if (val_expr->value_type() != AttrType::CHARS) {
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
+          int date_val{0};
+          std::string date_str(val_expr->get_value().data());
+          if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
+            return rc;
+          }
+          val_expr->get_value().set_date(date_val);
+        }
+      }
+    }
+  }
   bound_expressions.emplace_back(std::move(expr));
   return RC::SUCCESS;
 }
