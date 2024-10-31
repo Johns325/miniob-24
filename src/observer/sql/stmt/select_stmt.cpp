@@ -68,29 +68,38 @@ RC SelectStmt::remaining_predicates(std::vector<std::unique_ptr<Expression>>& pr
   }
   return RC::SUCCESS;
 }
-RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const char*, Table*>&table_map, unordered_map<const char*, Table*>& alias2name, unique_ptr<ExpressionBinder>&binder, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2table, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
   for (size_t i = 0; i < relations.size(); i++) {
     auto table_name = (*relations[i]).relation_name.c_str();
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
-      return RC::INVALID_ARGUMENT;
+      return {RC::INVALID_ARGUMENT,nullptr};
     }
 
     Table *table = db->find_table(table_name);
     if (nullptr == table) {
       LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
+      return {RC::SCHEMA_TABLE_NOT_EXIST, nullptr};
     }
+    ctx.add_table(table);
     tables.push_back(table);
     table_map.insert({table_name, table});
     if (!(*relations[i]).relation_alias.empty()) {
-      alias2name.insert({(*relations[i]).relation_alias.c_str(), table});
+      auto alias = (*relations[i]).relation_alias.c_str();
+      alias2table.insert({alias, table});
     }
   }
+  auto info  = ctx.bound_info();
+  info->tables.insert(info->tables.end(), tables.begin(), tables.end());
+  for (auto& pos : table_map)
+    info->name_2_tables.insert({pos.first, pos.second});
+  for (auto& pos : alias2table) 
+    info->alias_2_tables.insert({pos.first, pos.second});
+  auto binder = new ExpressionBinder(ctx);
   // bind join condtions.
   if ((*relations[0]).on_conditions != nullptr) {
     // almost impossible.
-    return RC::INTERNAL;
+    return {RC::INTERNAL, nullptr};
   }
   // tabe[i].on_conditions refers table_i and the joined table which is the join table of tables before table_i.
   // 应该先对on_conditions中的表达式进行绑定后再判定有效性
@@ -105,24 +114,23 @@ RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const
         auto cmp = static_cast<ComparisonExpr*>(expr);
         if (cmp->left()->type() == ExprType::UNBOUND_FIELD) {
           auto unbound_expr = static_cast<UnboundFieldExpr*>(cmp->left().get());
-          auto rc = check_join_validation(unbound_expr, alias2name, tables, k);
+          auto rc = check_join_validation(unbound_expr, alias2table, tables, k);
           if (!OB_SUCC(rc)) {
-            return rc;
+            return {rc, nullptr};
           }
         }
         if (cmp->right()->type() == ExprType::UNBOUND_FIELD) {
           auto unbound_expr = static_cast<UnboundFieldExpr*>(cmp->left().get());
-          auto rc = check_join_validation(unbound_expr, alias2name, tables, k);
+          auto rc = check_join_validation(unbound_expr, alias2table, tables, k);
           if (!OB_SUCC(rc)) {
-            return rc;
+            return {rc, nullptr};
           }
         }
-        // TODO还要考虑conditions中comparison的一端是一个表达式对应的别名。
         std::unique_ptr<Expression> expr1(cmp);
         auto rc = binder->bind_expression(expr1, bound_expres);
         if (OB_FAIL(rc)) {
           LOG_INFO("bind expression failed. rc=%s", strrc(rc));
-          return rc;
+          return {rc, nullptr};
         }
       }
       // 再做一个ConjunctionExpression
@@ -132,10 +140,10 @@ RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const
       join_exprs.emplace_back(nullptr);
     }
   }
-  return RC::SUCCESS;
+  return {RC::SUCCESS, std::move(binder)};
 }
 // 现在tables[index]找是否发现了该字段，若没有再到table[0-index-1]找
-RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<const char*, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index) {
+RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<string, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index) {
   Table * table;
   if (!is_blank(expr->table_name())) {
     // table name不为空有两种情况，第一种是直接给的表名，第二中情况下是别名
@@ -156,11 +164,12 @@ RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<const char*, 
       }
     }
     //处理第二中情况:
-    auto table = alias_to_table_name.find(expr->table_name())->second;
-    if (table == nullptr) {
+    auto pos = alias_to_table_name.find(expr->table_name());
+    if (pos == alias_to_table_name.end()) {
       // 所有查询中找不到
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
+    table = pos->second;
     // 如果alias有对应的table，那么table必须在0~index这个范围内
     for (int k = static_cast<int>(index); k >=0; --k) {
       if (table == tables[k])
@@ -184,8 +193,11 @@ RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<const char*, 
   return (meta == nullptr ? RC::SCHEMA_DB_NOT_EXIST : RC::SUCCESS);
 }
 
-RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& expressions, vector<unique_ptr<Expression>>&bound_expressions) {
+RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& expressions, vector<unique_ptr<Expression>>&bound_expressions, std::unordered_map<string, Expression*>& alias_to_expressions) {
   for (unique_ptr<Expression> &expression : expressions) {
+    if (!is_blank(expression->alias())) {
+      alias_to_expressions.insert({expression->alias(), expression.get()}); // 完成expr_alias 到expression的映射
+    }
     RC rc = binder->bind_expression(expression, bound_expressions);
     if (OB_FAIL(rc)) {
       LOG_INFO("bind expression failed. rc=%s", strrc(rc));
@@ -306,34 +318,38 @@ void SelectStmt::set_sub_queries(std::list<SubQueryExpr*>& other) {
 // bind_where
 // bind_group_by
 // bind_order_by
-RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt,unique_ptr<ExpressionBinder>&binder)
+RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info* upper_info)
 {
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
     return RC::INVALID_ARGUMENT;
   }
-  vector<Table *>                tables;
-  unordered_map<const char*, Table *> table_map; //
-  unordered_map<const char*, Table*> alias_to_table;
-  std::vector<std::unique_ptr<ConjunctionExpr>> join_expres;
+  Bound_Info info;
   /* ******************************************************{bind_from}*********************************************************************/ 
-  
-  auto res = bind_from(db, select_sql.relations, table_map, alias_to_table, binder, tables, join_expres);
-  if (!OB_SUCC(res)) {
-    LOG_WARN("bound table ref failed");
-    return res;
+  // step1 开始绑定FROM
+  BinderContext context;
+  if (upper_info) {
+    context.set_upper_info(upper_info);
   }
-  // 在bind select & where之前应该先将已绑定的table设置好
-  for (auto& pos : table_map)
-    binder->table_names_from_current_query_.insert({pos.first, pos.second});
-  for (auto& pos : alias_to_table) 
-    binder->table_alias_from_outer_queries_.insert({pos.first, pos.second});
-  binder->tables_from_current_query_.insert(binder->tables_from_current_query_.end(), tables.begin(), tables.end());
+  context.info_ = &info;
+  vector<Table *>                tables;
+  unordered_map<string, Table *> table_map; //
+  unordered_map<string, Table*> alias_to_table;
+  std::vector<std::unique_ptr<ConjunctionExpr>> join_expres;
+  auto res = bind_from(db, select_sql.relations, table_map, alias_to_table, context, tables, join_expres);
+  if (!OB_SUCC(res.first)) {
+    LOG_WARN("bound table ref failed");
+    return res.first;
+  }
+  unique_ptr<ExpressionBinder> binder(res.second);
+  
+  // 已经保存好本次查询所需要的所有Table信息包括别名和名字到table的映射
+
   /* ******************************************************{bind_select}*******************************************************************/ 
   // collect query fields in `select` statement
   vector<unique_ptr<Expression>> bound_expressions; // 可能直接丢给Projection opeator
   RC rc{RC::SUCCESS};
-  if (rc = bind_select(binder.get(), select_sql.expressions, bound_expressions); !OB_SUCC(rc)) {
+  if (rc = bind_select(binder.get(), select_sql.expressions, bound_expressions, info.alias_2_expressions); !OB_SUCC(rc)) {
     return rc;
   }
 
@@ -357,6 +373,9 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt,unique_ptr<
   vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
   if (nullptr != select_sql.having) {
     for (auto &expr : *select_sql.having) {
+      if (!is_blank(expr->alias())) {
+        info.alias_2_expressions.insert({expr->alias(), expr});
+      }
       std::unique_ptr<Expression> uniq_expr(expr);
       rc = binder->bind_expression(uniq_expr, bound_having_expressions);
       if (!OB_SUCC(rc)) {
@@ -379,36 +398,21 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt,unique_ptr<
   sel_stmt->set_order_by_stmt(order_by_stmt);
   // 這個sub_queris list中包含了where和on後面的所有子查詢。
   std::list<SubQueryExpr*> sub_queries;
-  if (!binder->sub_queries().empty()) {
-    sub_queries.insert(sub_queries.end(), binder->sub_queries().begin(), binder->sub_queries().end());
-    binder->sub_queries().clear();
-    sel_stmt->using_outer_field_ = binder->using_outer_field_;
-    binder->using_outer_field_ = false;
-    for (auto& iter : binder->table_names_from_current_query_)
-      binder->table_names_from_outer_queries_.insert({iter.first, iter.second});
-    for (auto& iter : binder->table_alias_from_current_query_) 
-      binder->table_alias_from_outer_queries_.insert({iter.first, iter.second});
-    for (auto& iter : binder->expre_alias_from_current_query_)
-      binder->expre_alias_from_outer_queries_.insert({iter.first, iter.second});
-    binder->expre_alias_from_current_query_.clear();
-    binder->table_alias_from_current_query_.clear();
-    binder->table_names_from_current_query_.clear();
+  if (!binder->sub_querys_.empty()) {
+    sub_queries.insert(sub_queries.end(), binder->sub_querys_.begin(), binder->sub_querys_.end());
   }
   if (!bound_having_expressions.empty()) {
     sel_stmt->set_having(std::move(bound_having_expressions));
   }
   //TODO现在已经对于当前的查询处理完所有的bind 工作，因此需要在递归的解析子查询之前将所有的以及处理的tables,expresssions以及相应的名字映射设置到ExpressionBinder中.
-  sel_stmt->using_outer_field_ = binder->using_outer_field_;
-  binder->using_outer_field_ = false;
+  sel_stmt->using_outer_field_ = binder->reference_outer_query_;
   for (auto query : sub_queries) {
     Stmt* select_stmt;
-    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, binder);
-    if (!OB_SUCC(rc)) {
+    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, &info);
+  if (!OB_SUCC(rc)) {
       return rc;
     }
     auto ss = static_cast<SelectStmt*>(select_stmt);
-    ss->using_outer_field_ = binder->using_outer_field_;
-    binder->using_outer_field_ = false;
     query->set_select_stmt(ss);
   }
   sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());

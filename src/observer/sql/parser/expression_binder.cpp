@@ -18,31 +18,22 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "sql/parser/expression_binder.h"
 #include "sql/expr/expression_iterator.h"
-#include "common/type/attr_type.h"
 
 using namespace std;
 using namespace common;
 
-Table *ExpressionBinder::find_table(const char *table_name) const
+Table *BinderContext::find_table(const char *table_name) const
 {
-  auto pos = table_names_from_current_query_.find(table_name);
-  if (pos == table_names_from_current_query_.end()) {
-    pos = table_alias_from_current_query_.find(table_name);
-    return (pos == table_alias_from_current_query_.end() ? nullptr : pos->second);
+  auto pred = [table_name](Table *table) { return 0 == strcasecmp(table_name, table->name()); };
+  auto iter = ranges::find_if(query_tables_, pred);
+  if (iter == query_tables_.end()) {
+    return nullptr;
   }
-  return pos->second;
-}
-Table *ExpressionBinder::find_in_bound_tables(const char*table_name) {
-  auto pos = table_names_from_outer_queries_.find(table_name);
-  if (pos == table_names_from_outer_queries_.end()) {
-    pos = table_alias_from_outer_queries_.find(table_name);
-    return (pos == table_alias_from_outer_queries_.end() ? nullptr : pos->second);
-  }
-  return pos->second;
+  return *iter;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions, bool more_than_one_table)
+static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions)
 {
   const TableMeta &table_meta = table->table_meta();
   const int        field_num  = table_meta.field_num();
@@ -50,9 +41,6 @@ static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expres
     Field      field(table, table_meta.field(i));
     FieldExpr *field_expr = new FieldExpr(field);
     field_expr->set_name(field.field_name());
-    if (more_than_one_table) {
-      field_expr->set_alias(string(table->name()) + "." + field.field_name());
-    }
     expressions.emplace_back(field_expr);
   }
 }
@@ -62,9 +50,7 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
   if (nullptr == expr) {
     return RC::SUCCESS;
   }
-  if (!is_blank(expr->alias())) {
-    expre_alias_from_current_query_.insert({expr->alias(), expr.get()});
-  }
+
   switch (expr->type()) {
     case ExprType::STAR: {
       return bind_star_expression(expr, bound_expressions);
@@ -116,21 +102,6 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
       bound_expressions.emplace_back(std::move(expr));
       return RC::SUCCESS;
     }
-    case ExprType::ALISAS :{
-      auto alias_expr = static_cast<AliasExpr*>(expr.get());
-      auto alias = alias_expr->alias_name();
-      if (expre_alias_from_current_query_.find(alias) == expre_alias_from_current_query_.end()) {
-        return RC::ALIAS_NOT_EXISTS;
-      }
-      std::unique_ptr<Expression> new_expr;
-      auto rc = expre_alias_from_current_query_.find(alias)->second->deep_copy(new_expr);
-      if (rc != RC::SUCCESS) {
-        return rc;
-      }
-      bound_expressions.emplace_back(std::move(new_expr));
-      return RC::SUCCESS;
-    }break;
-    
     default: {
       LOG_WARN("unknown expression type: %d", static_cast<int>(expr->type()));
       return RC::INTERNAL;
@@ -152,24 +123,31 @@ RC ExpressionBinder::bind_star_expression(
 
   const char *table_name = star_expr->table_name();
   if (!is_blank(table_name) && 0 != strcmp(table_name, "*")) {
-    Table *table = find_table(table_name);
+    Table *table = context_.find_table(table_name);
     if (nullptr == table) {
-      LOG_INFO("no such table in from list: %s", table_name);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
+      // 使用alias试一下
+      table = context_.find_table_by_alias(table_name);
+      if (table == nullptr) {
+        LOG_INFO("no such table in from list: %s", table_name);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
     }
     tables_to_wildcard.push_back(table);
   } else {
-    tables_to_wildcard.insert(tables_to_wildcard.end(), tables_from_current_query_.begin(), tables_from_current_query_.end());
+    const vector<Table *> &all_tables = context_.query_tables();
+    tables_to_wildcard.insert(tables_to_wildcard.end(), all_tables.begin(), all_tables.end());
   }
 
   for (Table *table : tables_to_wildcard) {
-    wildcard_fields(table, bound_expressions, tables_to_wildcard.size() > 1);
+    wildcard_fields(table, bound_expressions);
   }
 
   return RC::SUCCESS;
 }
 
-RC ExpressionBinder::bind_unbound_field_expression(unique_ptr<Expression> &expr, vector<unique_ptr<Expression>> &bound_expressions) {
+RC ExpressionBinder::bind_unbound_field_expression(
+    unique_ptr<Expression> &expr, vector<unique_ptr<Expression>> &bound_expressions)
+{
   if (nullptr == expr) {
     return RC::SUCCESS;
   }
@@ -178,30 +156,32 @@ RC ExpressionBinder::bind_unbound_field_expression(unique_ptr<Expression> &expr,
 
   const char *table_name = unbound_field_expr->table_name();
   const char *field_name = unbound_field_expr->field_name();
-  
-  string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
   if (is_blank(table_name)) {
-    if (tables_from_current_query_.size() != 1) {
+    if (context_.query_tables().size() != 1) {
       LOG_INFO("cannot determine table for field: %s", field_name);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
-
-    table = tables_from_current_query_[0];
+    table = context_.query_tables()[0];
   } else {
-    table = find_table(table_name); // step 1 现在当前查询中找table
-    if (table == nullptr) {
-      table = find_in_bound_tables(table_name); //step 2 在外查询中找
-      if (table == nullptr) {
+    table = context_.find_table(table_name);
+    if (nullptr == table) {
+      // 通过本层查询的别名找table
+      if ((table = context_.find_table_by_alias(table_name)) == nullptr) {
+        // 最后通过上层查询的name和alias找table
+        if (table = context_.find_table_from_outer_query(table_name); table == nullptr) {
           LOG_INFO("no such table in from list: %s", table_name);
           return RC::SCHEMA_TABLE_NOT_EXIST;
+        }
+        // 在上层找到
+        reference_outer_query_ = true;
       }
-      using_outer_field_ = true;
+      // 在本层查询的alias中找到
     }
   }
 
   if (0 == strcmp(field_name, "*")) {
-    wildcard_fields(table, bound_expressions, false);
+    wildcard_fields(table, bound_expressions);
   } else {
     const FieldMeta *field_meta = table->table_meta().field(field_name);
     if (nullptr == field_meta) {
@@ -210,8 +190,8 @@ RC ExpressionBinder::bind_unbound_field_expression(unique_ptr<Expression> &expr,
     }
     Field      field(table, field_meta);
     FieldExpr *field_expr = new FieldExpr(field);
+    field_expr->set_name(field_name);
     bound_expressions.emplace_back(field_expr);
-    field_expr->set_name((tables_from_current_query_.size() > 1 ? name:field_name));
   }
 
   return RC::SUCCESS;
@@ -306,51 +286,7 @@ RC ExpressionBinder::bind_comparison_expression(
   if (right.get() != right_expr.get()) {
     right_expr.reset(right.release());
   }
-  FieldExpr *field_expr{nullptr};
-  ValueExpr *val_expr{nullptr};
-  
-  if (left_expr->type() == ExprType::FIELD && right_expr->type() == ExprType::VALUE) {
-    field_expr = static_cast<FieldExpr*>(left_expr.get());
-    val_expr = static_cast<ValueExpr*>(right_expr.get());
-  } else if (left_expr->type() == ExprType::VALUE && right_expr->type() == ExprType::FIELD) {
-    field_expr = static_cast<FieldExpr*>(right_expr.get());
-    val_expr = static_cast<ValueExpr*>(left_expr.get());
-  }
-  if (field_expr && val_expr) {
-    auto field = field_expr->field().meta();
-    auto val = val_expr->get_value();
-    if (!field->nullable()) {
-      // field is not null while insert value is null.
-      if (val.is_null())
-        return RC::FIELD_NOT_NULLABLE;
-      if (field_expr->field().attr_type() == AttrType::DATES) {
-      
-        if (val_expr->value_type() != AttrType::CHARS) {
-          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-        }
-        int date_val{0};
-        std::string date_str(val_expr->get_value().data());
-        if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
-          return rc;
-        }
-        val_expr->get_value().set_date(date_val);
-      }
-    } else {
-      if (!val.is_null()) {
-        if (field_expr->field().attr_type() == AttrType::DATES) {
-          if (val_expr->value_type() != AttrType::CHARS) {
-            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-          }
-          int date_val{0};
-          std::string date_str(val_expr->get_value().data());
-          if (rc = date_str_to_int(date_str, date_val); rc != RC::SUCCESS) {
-            return rc;
-          }
-          val_expr->get_value().set_date(date_val);
-        }
-      }
-    }
-  }
+
   bound_expressions.emplace_back(std::move(expr));
   return RC::SUCCESS;
 }
@@ -425,7 +361,7 @@ RC ExpressionBinder::bind_arithmetic_expression(
     return rc;
   }
 
-  if (child_bound_expressions.size() != 1 && arithmetic_expr->arithmetic_type() != ArithmeticExpr::Type::NEGATIVE) {
+  if (child_bound_expressions.size() != 1) {
     LOG_WARN("invalid right children number of comparison expression: %d", child_bound_expressions.size());
     return RC::INVALID_ARGUMENT;
   }
@@ -434,12 +370,7 @@ RC ExpressionBinder::bind_arithmetic_expression(
   if (right.get() != right_expr.get()) {
     right_expr.reset(right.release());
   }
-  // if (arithmetic_expr->arithmetic_type() == ArithmeticExpr::Type::DIV && right_expr->type() == ExprType::VALUE) {
-  //   auto val = static_cast<ValueExpr*>(right_expr.get())->get_value();
-  //   if ((val.attr_type() == AttrType::INTS || val.get_int() == 0) || (val.attr_type() == AttrType::FLOATS && val.get_float() == 0.0)) {
-  //     return RC::DIVIDE_ZERO;
-  //   }
-  // }
+
   bound_expressions.emplace_back(std::move(expr));
   return RC::SUCCESS;
 }

@@ -42,8 +42,7 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
       Stmt * stmt;
       auto sub_query_expr = static_cast<SubQueryExpr*>(assign->right_hand_side); 
       auto sql_node = sub_query_expr->get_sql_node();
-      unique_ptr<ExpressionBinder> binder(new ExpressionBinder);
-      auto rc = SelectStmt::create(db, sql_node->selection, stmt,binder);
+      auto rc = SelectStmt::create(db, sql_node->selection, stmt, nullptr);
       if (!OB_SUCC(rc)) {
       return rc;
       }
@@ -83,22 +82,17 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
 
   BinderContext ctx;
   ctx.add_table(table);
-  // ExpressionBinder binder(ctx);
-  std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder);
-  binder->tables_from_current_query_.emplace_back(table);
-  binder->table_names_from_current_query_.insert({update.relation_name.c_str(), table});
+  ExpressionBinder binder(ctx);
   vector<unique_ptr<Expression>> bound_where_expressions;
   if (update.conditions != nullptr) {
     for (auto expr : *update.conditions) {
       std::unique_ptr<Expression> expr_ptr(expr);
-      auto rc = binder->bind_expression(expr_ptr, bound_where_expressions);
+      auto rc = binder.bind_expression(expr_ptr, bound_where_expressions);
       if (!OB_SUCC(rc)) {
         return rc;
       }
     }
   }
-  
-
   auto u_stmt = new UpdateStmt(table, update.assignments, std::move(bound_where_expressions));
   stmt = u_stmt;
   return RC::SUCCESS;

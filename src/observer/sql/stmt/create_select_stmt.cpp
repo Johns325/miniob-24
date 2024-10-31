@@ -27,8 +27,7 @@ static int default_attr_length(AttrType type) {
 }
 RC CreateTableSelectStmt::create(Db *db, CreateTableSelectSqlNode &create_table, Stmt *&stmt) {
   Stmt* sel_stmt;
-  std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder());
-  auto rc = SelectStmt::create(db, create_table.query->selection, sel_stmt, binder);
+  auto rc = SelectStmt::create(db, create_table.query->selection, sel_stmt, nullptr);
   if (!OB_SUCC(rc)) {
     return rc;
   }

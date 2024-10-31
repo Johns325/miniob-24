@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2021 OceanBase and/or its affiliates. All rights reserved.
 miniob is licensed under Mulan PSL v2.
 You can use this software according to the terms and conditions of the Mulan PSL v2.
@@ -13,27 +14,47 @@ See the Mulan PSL v2 for more details. */
 //
 
 #pragma once
-#include <unordered_map>
+
 #include <vector>
-#include <list>
+
 #include "sql/expr/expression.h"
 
 class BinderContext
 {
 public:
   friend class ExpressionBinder;
+  friend class SelectStmt;
   BinderContext()          = default;
   virtual ~BinderContext() = default;
 
   void add_table(Table *table) { query_tables_.push_back(table); }
 
-  
-  auto set_tables(std::vector<Table*>*tables) {tables_in_outer_query_ = tables;}
-  const std::vector<Table *> &query_tables() const { return query_tables_; }
+  Table *find_table(const char *table_name) const;
 
+  const std::vector<Table *> &query_tables() const { return query_tables_; }
+  // name = true :by name. name = false:by alias
+  auto find_table_by_name(const char* tb_name) const -> Table* {
+    auto pos = info_->name_2_tables.find(tb_name);
+    return (pos == info_->name_2_tables.end() ? nullptr : pos->second);
+  }
+  auto find_table_by_alias(const char* tb_name) const -> Table* {
+    auto pos = info_->alias_2_tables.find(tb_name);
+    return (pos == info_->alias_2_tables.end() ? nullptr : pos->second);
+  }
+  auto find_table_from_outer_query(const char *tb_name) const -> Table* {
+    auto pos = outer_info_->name_2_tables.find(tb_name);
+    if (pos != outer_info_->name_2_tables.end()) {
+      return pos->second;
+    }
+    pos = outer_info_->alias_2_tables.find(tb_name);
+    return (pos == outer_info_->alias_2_tables.end() ? nullptr : pos->second);
+  }
+  void set_upper_info(Bound_Info * info) {info_ = info;}
+  auto bound_info() -> Bound_Info*{ return info_; }
 private:
   std::vector<Table *> query_tables_;
-  std::vector<Table*>* tables_in_outer_query_;
+  Bound_Info *info_{nullptr};
+  Bound_Info *outer_info_{nullptr}; //外面一层查询的信息
 };
 
 /**
@@ -44,14 +65,11 @@ class ExpressionBinder
 {
 public:
   friend class SelectStmt;
-  friend class DeleteStmt;
-  friend class UpdateStmt;
-  friend RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const char*, Table*>&table_map, std::unordered_map<const char*, Table*>& alias2name, unique_ptr<ExpressionBinder>&binder, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
-  explicit ExpressionBinder() {}
+  ExpressionBinder(BinderContext &context) : context_(context) {}
   virtual ~ExpressionBinder() = default;
 
   RC bind_expression(std::unique_ptr<Expression> &expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
-  std::list<SubQueryExpr*>& sub_queries() { return sub_querys_; }
+
 private:
   RC bind_star_expression(
       std::unique_ptr<Expression> &star_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
@@ -71,22 +89,8 @@ private:
       std::unique_ptr<Expression> &arithmetic_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
   RC bind_aggregate_expression(
       std::unique_ptr<Expression> &aggregate_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
-  Table *find_table(const char *table_name) const;
-  Table *find_in_bound_tables(const char*table_name);
 private:
-  // BinderContext &context_;
-  // std::vector<Table *> tables_from_outer_queries_;
-  std::unordered_map<const char*,Table*> table_names_from_outer_queries_;
-  std::unordered_map<const char*,Table*> table_alias_from_outer_queries_;
-  std::unordered_map<const char*,Expression*> expre_alias_from_outer_queries_;
-  //现在当前查询的tables中查找，然后再从outer queries中查找tables
-
-  std::vector<Table *> tables_from_current_query_; 
-  std::unordered_map<const char*,Table*> table_names_from_current_query_;
-  std::unordered_map<const char*,Table*> table_alias_from_current_query_;
-  std::unordered_map<const char*,Expression*> expre_alias_from_current_query_;
-
-
+  BinderContext &context_;
   std::list<SubQueryExpr*> sub_querys_; // 存放所有的子查詢
-  bool using_outer_field_{false};
+  bool reference_outer_query_{false};
 };

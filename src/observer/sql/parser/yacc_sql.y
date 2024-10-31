@@ -288,11 +288,15 @@ sync_stmt:
     }
     ;
 alias_stmt: // ok
-  /* empty */
+  /* empty */ 
   {
     $$ = nullptr;
   }
-  | ALIAS ID {
+  | ID 
+  {
+    $$ = $1;
+  }
+  | AS ID {
     $$ = $2;
   }
   ;

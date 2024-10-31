@@ -5,7 +5,7 @@
 
 
 
-RC OrderByStmt::create(std::unordered_map<const char*,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt) {
+RC OrderByStmt::create(std::unordered_map<string,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt) {
   if (order_by_specs.empty()) {
     return RC::SUCCESS;
   }

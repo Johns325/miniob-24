@@ -59,8 +59,7 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
       return DeleteStmt::create(db, sql_node.deletion, stmt);
     }
     case SCF_SELECT: {
-      std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder);
-      return SelectStmt::create(db, sql_node.selection, stmt, binder);
+    return SelectStmt::create(db, sql_node.selection, stmt, nullptr);
     }
 
     case SCF_EXPLAIN: {

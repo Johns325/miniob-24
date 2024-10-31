@@ -35,6 +35,22 @@ class ConjunctionExpr;
 class UnboundFieldExpr;
 class OrderByStmt;
 class SubQueryExpr;
+using UEXPR = std::unique_ptr<Expression>;
+using std::unordered_map;
+// 用来记录一个select语句相应的查询信息
+// 1 查询中涉及到的tables
+// 2 table_name 到 Table的映射
+struct Bound_Info {
+  Bound_Info(/* args */) = default;
+  ~Bound_Info() = default;
+  std::vector<Table*> tables;
+  unordered_map<string, Table*> name_2_tables;
+  unordered_map<string, Table*> alias_2_tables;
+  unordered_map<string, Expression*> alias_2_expressions;
+};
+
+
+
 
 /**
  * @brief 表示select语句
@@ -53,7 +69,7 @@ public:
   void set_sub_queries(std::list<SubQueryExpr*>& other);
   std::list<SubQueryExpr*>& sub_queries() { return sub_queries_;}
 public:
-  static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, unique_ptr<ExpressionBinder>&binder);
+  static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info* upper_info);
   
 private:
   
@@ -80,10 +96,10 @@ private:
 };
 
 
-std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info>& relations, std::unordered_map<string, Table*>&table_map, std::unordered_map<string, Table*>& alias2name, unique_ptr<ExpressionBinder>&binder, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
-RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& relations, vector<unique_ptr<Expression>>&bound_expressions);
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
+RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& relations, vector<unique_ptr<Expression>>&bound_expressions,  std::unordered_map<string, Expression*>& alias_to_expressions);
 RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs);
-RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<const char*, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
+RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<string, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index);
 RC bind_where(Db*db, ExpressionBinder* binder, std::vector<Expression*>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
 RC bind_group_by(ExpressionBinder* binder, std::vector<unique_ptr<Expression>>* expressions, vector<unique_ptr<Expression>>&bound_expressions);
 // RC create_sub_query_stmt(Db* db,Expression* cmp_expr);
