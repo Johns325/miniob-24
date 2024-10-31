@@ -33,7 +33,7 @@ Table *BinderContext::find_table(const char *table_name) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions)
+static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expressions, bool more_than_one_table)
 {
   const TableMeta &table_meta = table->table_meta();
   const int        field_num  = table_meta.field_num();
@@ -41,6 +41,9 @@ static void wildcard_fields(Table *table, vector<unique_ptr<Expression>> &expres
     Field      field(table, table_meta.field(i));
     FieldExpr *field_expr = new FieldExpr(field);
     field_expr->set_name(field.field_name());
+    if (more_than_one_table) {
+      field_expr->set_alias(string(table->name()) + "." + field.field_name());
+    }
     expressions.emplace_back(field_expr);
   }
 }
@@ -139,7 +142,7 @@ RC ExpressionBinder::bind_star_expression(
   }
 
   for (Table *table : tables_to_wildcard) {
-    wildcard_fields(table, bound_expressions);
+    wildcard_fields(table, bound_expressions, tables_to_wildcard.size() > 1);
   }
 
   return RC::SUCCESS;
@@ -156,6 +159,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
 
   const char *table_name = unbound_field_expr->table_name();
   const char *field_name = unbound_field_expr->field_name();
+  string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
   if (is_blank(table_name)) {
     if (context_.query_tables().size() != 1) {
@@ -181,7 +185,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
   }
 
   if (0 == strcmp(field_name, "*")) {
-    wildcard_fields(table, bound_expressions);
+    wildcard_fields(table, bound_expressions, false);
   } else {
     const FieldMeta *field_meta = table->table_meta().field(field_name);
     if (nullptr == field_meta) {
@@ -190,7 +194,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
     }
     Field      field(table, field_meta);
     FieldExpr *field_expr = new FieldExpr(field);
-    field_expr->set_name(field_name);
+    field_expr->set_name((context_.query_tables().size() > 1 ? name : field_name));
     bound_expressions.emplace_back(field_expr);
   }
 
@@ -405,7 +409,7 @@ RC ExpressionBinder::bind_arithmetic_expression(
     return rc;
   }
 
-  if (child_bound_expressions.size() != 1) {
+   if (child_bound_expressions.size() != 1 && arithmetic_expr->arithmetic_type() != ArithmeticExpr::Type::NEGATIVE) {
     LOG_WARN("invalid right children number of comparison expression: %d", child_bound_expressions.size());
     return RC::INVALID_ARGUMENT;
   }
