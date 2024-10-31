@@ -1036,6 +1036,22 @@ null_condition:
       std::unique_ptr<Expression> right(new ValueExpr(v2));
       $$ = new ComparisonExpr($2, std::move(left), std::move(right));
     }
+    // | ID comp_op null {
+    //   Value v2;
+    //   v2.set_null();
+    //   std::unique_ptr<Expression> left(new AliasExpr($1));
+    //   std::unique_ptr<Expression> right(new ValueExpr(v2));
+    //   free($1);
+    //   $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    // }
+    // | null comp_op ID {
+    //   Value v1;
+    //   v1.set_null();
+    //   std::unique_ptr<Expression> left(new ValueExpr(v1));
+    //   std::unique_ptr<Expression> right(new AliasExpr($3));
+    //   free($3);
+    //   $$ = new ComparisonExpr($2, std::move(left), std::move(right));
+    // }
     ;
 
 comp_op:

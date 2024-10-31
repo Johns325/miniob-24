@@ -4,7 +4,7 @@
 #include "sql/expr/expression.h"
 #include "deps/common/lang/string.h"
 #include "common/type/attr_type.h"
-
+#include "sql/parser/expression_binder.h"
 static int default_attr_length(AttrType type) {
   switch (type) {
     case AttrType::CHARS:
@@ -27,7 +27,8 @@ static int default_attr_length(AttrType type) {
 }
 RC CreateTableSelectStmt::create(Db *db, CreateTableSelectSqlNode &create_table, Stmt *&stmt) {
   Stmt* sel_stmt;
-  auto rc = SelectStmt::create(db, create_table.query->selection, sel_stmt);
+  std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder());
+  auto rc = SelectStmt::create(db, create_table.query->selection, sel_stmt, binder);
   if (!OB_SUCC(rc)) {
     return rc;
   }

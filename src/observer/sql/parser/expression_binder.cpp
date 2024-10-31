@@ -23,19 +23,22 @@ See the Mulan PSL v2 for more details. */
 using namespace std;
 using namespace common;
 
-Table *BinderContext::find_table(const char *table_name) const
+Table *ExpressionBinder::find_table(const char *table_name) const
 {
-  auto pred = [table_name](Table *table) { return 0 == strcasecmp(table_name, table->name()); };
-  auto iter = ranges::find_if(query_tables_, pred);
-  if (iter == query_tables_.end()) {
-    return nullptr;
+  auto pos = table_names_from_current_query_.find(table_name);
+  if (pos == table_names_from_current_query_.end()) {
+    pos = table_alias_from_current_query_.find(table_name);
+    return (pos == table_alias_from_current_query_.end() ? nullptr : pos->second);
   }
-  return *iter;
+  return pos->second;
 }
-Table *BinderContext::find_in_bound_tables(const char*table_name) {
-  auto pred = [table_name](Table*table) { return 0 == strcasecmp(table_name, table->name()); };
-  auto iter = ranges::find_if(*tables_in_outer_query_, pred);
-  return (iter == tables_in_outer_query_->end() ? nullptr : *iter);
+Table *ExpressionBinder::find_in_bound_tables(const char*table_name) {
+  auto pos = table_names_from_outer_queries_.find(table_name);
+  if (pos == table_names_from_outer_queries_.end()) {
+    pos = table_alias_from_outer_queries_.find(table_name);
+    return (pos == table_alias_from_outer_queries_.end() ? nullptr : pos->second);
+  }
+  return pos->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +62,9 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
   if (nullptr == expr) {
     return RC::SUCCESS;
   }
-
+  if (!is_blank(expr->alias())) {
+    expre_alias_from_current_query_.insert({expr->alias(), expr.get()});
+  }
   switch (expr->type()) {
     case ExprType::STAR: {
       return bind_star_expression(expr, bound_expressions);
@@ -111,6 +116,20 @@ RC ExpressionBinder::bind_expression(unique_ptr<Expression> &expr, vector<unique
       bound_expressions.emplace_back(std::move(expr));
       return RC::SUCCESS;
     }
+    case ExprType::ALISAS :{
+      auto alias_expr = static_cast<AliasExpr*>(expr.get());
+      auto alias = alias_expr->alias_name();
+      if (expre_alias_from_current_query_.find(alias) == expre_alias_from_current_query_.end()) {
+        return RC::ALIAS_NOT_EXISTS;
+      }
+      std::unique_ptr<Expression> new_expr;
+      auto rc = expre_alias_from_current_query_.find(alias)->second->deep_copy(new_expr);
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+      bound_expressions.emplace_back(std::move(new_expr));
+      return RC::SUCCESS;
+    }break;
     
     default: {
       LOG_WARN("unknown expression type: %d", static_cast<int>(expr->type()));
@@ -133,16 +152,14 @@ RC ExpressionBinder::bind_star_expression(
 
   const char *table_name = star_expr->table_name();
   if (!is_blank(table_name) && 0 != strcmp(table_name, "*")) {
-    Table *table = context_.find_table(table_name);
+    Table *table = find_table(table_name);
     if (nullptr == table) {
       LOG_INFO("no such table in from list: %s", table_name);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
-
     tables_to_wildcard.push_back(table);
   } else {
-    const vector<Table *> &all_tables = context_.query_tables();
-    tables_to_wildcard.insert(tables_to_wildcard.end(), all_tables.begin(), all_tables.end());
+    tables_to_wildcard.insert(tables_to_wildcard.end(), tables_from_current_query_.begin(), tables_from_current_query_.end());
   }
 
   for (Table *table : tables_to_wildcard) {
@@ -152,9 +169,7 @@ RC ExpressionBinder::bind_star_expression(
   return RC::SUCCESS;
 }
 
-RC ExpressionBinder::bind_unbound_field_expression(
-    unique_ptr<Expression> &expr, vector<unique_ptr<Expression>> &bound_expressions)
-{
+RC ExpressionBinder::bind_unbound_field_expression(unique_ptr<Expression> &expr, vector<unique_ptr<Expression>> &bound_expressions) {
   if (nullptr == expr) {
     return RC::SUCCESS;
   }
@@ -167,24 +182,21 @@ RC ExpressionBinder::bind_unbound_field_expression(
   string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
   if (is_blank(table_name)) {
-    if (context_.query_tables().size() != 1) {
+    if (tables_from_current_query_.size() != 1) {
       LOG_INFO("cannot determine table for field: %s", field_name);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
 
-    table = context_.query_tables()[0];
+    table = tables_from_current_query_[0];
   } else {
-    table = context_.find_table(table_name);
-    if (nullptr == table) {
-      if (nullptr == context_.tables_in_outer_query_) {  
-        LOG_INFO("no such table in from list: %s", table_name);
-        return RC::SCHEMA_TABLE_NOT_EXIST;
+    table = find_table(table_name); // step 1 现在当前查询中找table
+    if (table == nullptr) {
+      table = find_in_bound_tables(table_name); //step 2 在外查询中找
+      if (table == nullptr) {
+          LOG_INFO("no such table in from list: %s", table_name);
+          return RC::SCHEMA_TABLE_NOT_EXIST;
       }
-      table = context_.find_in_bound_tables(table_name);
-      if (nullptr == context_.tables_in_outer_query_) {  
-        LOG_INFO("no such table in from list: %s", table_name);
-        return RC::SCHEMA_TABLE_NOT_EXIST;
-      }
+      using_outer_field_ = true;
     }
   }
 
@@ -196,13 +208,10 @@ RC ExpressionBinder::bind_unbound_field_expression(
       LOG_INFO("no such field in table: %s.%s", table_name, field_name);
       return RC::SCHEMA_FIELD_MISSING;
     }
-
     Field      field(table, field_meta);
     FieldExpr *field_expr = new FieldExpr(field);
     bound_expressions.emplace_back(field_expr);
-    // string name = (table_name == nullptr ? field_name : string(table_name) + "." + string(field_name));
-    
-    field_expr->set_name((context_.query_tables().size() > 1 ? name:field_name));
+    field_expr->set_name((tables_from_current_query_.size() > 1 ? name:field_name));
   }
 
   return RC::SUCCESS;

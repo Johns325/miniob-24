@@ -32,6 +32,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/drop_table_stmt.h"
 #include "sql/stmt/create_select_stmt.h"
 #include "sql/stmt/update_stmt.h"
+#include "sql/parser/expression_binder.h"
 bool stmt_type_ddl(StmtType type)
 {
   switch (type) {
@@ -58,7 +59,8 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
       return DeleteStmt::create(db, sql_node.deletion, stmt);
     }
     case SCF_SELECT: {
-      return SelectStmt::create(db, sql_node.selection, stmt);
+      std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder);
+      return SelectStmt::create(db, sql_node.selection, stmt, binder);
     }
 
     case SCF_EXPLAIN: {

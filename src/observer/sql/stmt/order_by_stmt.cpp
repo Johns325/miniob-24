@@ -5,7 +5,7 @@
 
 
 
-RC OrderByStmt::create(std::unordered_map<string,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt) {
+RC OrderByStmt::create(std::unordered_map<const char*,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt) {
   if (order_by_specs.empty()) {
     return RC::SUCCESS;
   }
@@ -13,7 +13,7 @@ RC OrderByStmt::create(std::unordered_map<string,Table*>& name_to_tables , std::
   for (auto & order_by : order_by_specs) {
     Table * table = nullptr;
     if (name_to_tables.size() > 1) {
-      auto iter = name_to_tables.find(order_by.table_name);
+      auto iter = name_to_tables.find(order_by.table_name.c_str());
       if (iter == name_to_tables.end()) {
         return RC::SCHEMA_TABLE_NOT_EXIST;
       } else {

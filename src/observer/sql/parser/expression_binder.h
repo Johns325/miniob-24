@@ -13,7 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #pragma once
-
+#include <unordered_map>
 #include <vector>
 #include <list>
 #include "sql/expr/expression.h"
@@ -27,8 +27,7 @@ public:
 
   void add_table(Table *table) { query_tables_.push_back(table); }
 
-  Table *find_table(const char *table_name) const;
-  Table *find_in_bound_tables(const char*table_name);
+  
   auto set_tables(std::vector<Table*>*tables) {tables_in_outer_query_ = tables;}
   const std::vector<Table *> &query_tables() const { return query_tables_; }
 
@@ -44,7 +43,11 @@ private:
 class ExpressionBinder
 {
 public:
-  ExpressionBinder(BinderContext &context) : context_(context) {}
+  friend class SelectStmt;
+  friend class DeleteStmt;
+  friend class UpdateStmt;
+  friend RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const char*, Table*>&table_map, std::unordered_map<const char*, Table*>& alias2name, unique_ptr<ExpressionBinder>&binder, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
+  explicit ExpressionBinder() {}
   virtual ~ExpressionBinder() = default;
 
   RC bind_expression(std::unique_ptr<Expression> &expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
@@ -68,8 +71,22 @@ private:
       std::unique_ptr<Expression> &arithmetic_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
   RC bind_aggregate_expression(
       std::unique_ptr<Expression> &aggregate_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
-
+  Table *find_table(const char *table_name) const;
+  Table *find_in_bound_tables(const char*table_name);
 private:
-  BinderContext &context_;
+  // BinderContext &context_;
+  // std::vector<Table *> tables_from_outer_queries_;
+  std::unordered_map<const char*,Table*> table_names_from_outer_queries_;
+  std::unordered_map<const char*,Table*> table_alias_from_outer_queries_;
+  std::unordered_map<const char*,Expression*> expre_alias_from_outer_queries_;
+  //现在当前查询的tables中查找，然后再从outer queries中查找tables
+
+  std::vector<Table *> tables_from_current_query_; 
+  std::unordered_map<const char*,Table*> table_names_from_current_query_;
+  std::unordered_map<const char*,Table*> table_alias_from_current_query_;
+  std::unordered_map<const char*,Expression*> expre_alias_from_current_query_;
+
+
   std::list<SubQueryExpr*> sub_querys_; // 存放所有的子查詢
+  bool using_outer_field_{false};
 };

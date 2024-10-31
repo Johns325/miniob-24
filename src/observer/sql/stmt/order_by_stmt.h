@@ -22,7 +22,7 @@ class OrderByStmt : public Stmt {
   OrderByStmt() = default;
   StmtType type() const override { return StmtType::ORDER_BY; }
   OrderByStmt(std::vector<std::unique_ptr<OrderByUnit>>&& units) : units_(std::move(units)) {}
-  static RC create(std::unordered_map<std::string,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt);
+  static RC create(std::unordered_map<const char*,Table*>& name_to_tables , std::vector<OrderBySqlNode>& order_by_specs, OrderByStmt *&stmt);
   std::vector<std::unique_ptr<OrderByUnit>>& units() { return units_; }
   
  private:

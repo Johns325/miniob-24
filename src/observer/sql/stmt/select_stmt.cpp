@@ -68,33 +68,29 @@ RC SelectStmt::remaining_predicates(std::vector<std::unique_ptr<Expression>>& pr
   }
   return RC::SUCCESS;
 }
-std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, string>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
+RC bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<const char*, Table*>&table_map, unordered_map<const char*, Table*>& alias2name, unique_ptr<ExpressionBinder>&binder, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
   for (size_t i = 0; i < relations.size(); i++) {
     auto table_name = (*relations[i]).relation_name.c_str();
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
-      return {RC::INVALID_ARGUMENT,nullptr};
+      return RC::INVALID_ARGUMENT;
     }
 
     Table *table = db->find_table(table_name);
     if (nullptr == table) {
       LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
-      return {RC::SCHEMA_TABLE_NOT_EXIST, nullptr};
+      return RC::SCHEMA_TABLE_NOT_EXIST;
     }
-
-    ctx.add_table(table);
     tables.push_back(table);
     table_map.insert({table_name, table});
     if (!(*relations[i]).relation_alias.empty()) {
-      // TODO是否mapping[alias, Table*]更好
-      alias2name.insert({(*relations[i]).relation_alias, (*relations[i]).relation_name});
+      alias2name.insert({(*relations[i]).relation_alias.c_str(), table});
     }
   }
-  auto binder = new ExpressionBinder(ctx);
   // bind join condtions.
   if ((*relations[0]).on_conditions != nullptr) {
     // almost impossible.
-    return {RC::INTERNAL, nullptr};
+    return RC::INTERNAL;
   }
   // tabe[i].on_conditions refers table_i and the joined table which is the join table of tables before table_i.
   // 应该先对on_conditions中的表达式进行绑定后再判定有效性
@@ -111,21 +107,22 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relat
           auto unbound_expr = static_cast<UnboundFieldExpr*>(cmp->left().get());
           auto rc = check_join_validation(unbound_expr, alias2name, tables, k);
           if (!OB_SUCC(rc)) {
-            return {rc, nullptr};
+            return rc;
           }
         }
         if (cmp->right()->type() == ExprType::UNBOUND_FIELD) {
           auto unbound_expr = static_cast<UnboundFieldExpr*>(cmp->left().get());
           auto rc = check_join_validation(unbound_expr, alias2name, tables, k);
           if (!OB_SUCC(rc)) {
-            return {rc, nullptr};
+            return rc;
           }
         }
+        // TODO还要考虑conditions中comparison的一端是一个表达式对应的别名。
         std::unique_ptr<Expression> expr1(cmp);
         auto rc = binder->bind_expression(expr1, bound_expres);
         if (OB_FAIL(rc)) {
           LOG_INFO("bind expression failed. rc=%s", strrc(rc));
-          return {rc, nullptr};
+          return rc;
         }
       }
       // 再做一个ConjunctionExpression
@@ -135,17 +132,18 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relat
       join_exprs.emplace_back(nullptr);
     }
   }
-  return {RC::SUCCESS, std::move(binder)};
+  return RC::SUCCESS;
 }
 // 现在tables[index]找是否发现了该字段，若没有再到table[0-index-1]找
-RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, std::string>& alias_to_table_name, std::vector<Table*>&tables, size_t index) {
+RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<const char*, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index) {
   Table * table;
   if (!is_blank(expr->table_name())) {
+    // table name不为空有两种情况，第一种是直接给的表名，第二中情况下是别名
     if (0 == strcmp(expr->table_name(), tables[index]->name()))  {
       table = tables[index];
-    auto field = table->table_meta().field(expr->field_name());
-    if (field != nullptr) 
-      return RC::SUCCESS;
+      auto field = table->table_meta().field(expr->field_name());
+      if (field != nullptr) 
+        return RC::SUCCESS;
     } else {
       for (auto k = static_cast<int>(index-1); k>=0 ;--k) {
         table = nullptr;
@@ -156,6 +154,17 @@ RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<std::string, 
           }
         }
       }
+    }
+    //处理第二中情况:
+    auto table = alias_to_table_name.find(expr->table_name())->second;
+    if (table == nullptr) {
+      // 所有查询中找不到
+      return RC::SCHEMA_FIELD_NOT_EXIST;
+    }
+    // 如果alias有对应的table，那么table必须在0~index这个范围内
+    for (int k = static_cast<int>(index); k >=0; --k) {
+      if (table == tables[k])
+        return RC::SUCCESS;
     }
     // that's to say the your input is ID.ID while it cannot match any field.
     return RC::SCHEMA_FIELD_NOT_EXIST;
@@ -203,69 +212,68 @@ RC bind_where(Db*db, ExpressionBinder* binder, std::vector<Expression*>* express
 
 
 
-RC create_sub_query_stmt(Db* db, Expression *expr) {
-  RC rc{RC::SUCCESS};
-  
-  if (expr->type() == ExprType::COMPARISON) {
-    auto cmp_expr = static_cast<ComparisonExpr*>(expr);
-    if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
-      auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->left().get());
-      Stmt *stmt;
-      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
-      if (!OB_SUCC(rc)) {
-        return rc;
-      }
-      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
-    } 
-    if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
-      auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->right().get());
-      Stmt *stmt;
-      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
-      if (!OB_SUCC(rc)) {
-        return rc;
-      }
-      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
-    }
-    rc = create_sub_query_stmt(db,cmp_expr->left().get());
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-    rc = create_sub_query_stmt(db,cmp_expr->right().get());
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-  } else if (ExprType::ARITHMETIC ==  expr->type()) {
-    // TODO 和ComparisonExpr的代碼高度相同，請優化一下
-    auto arithmetic_expr = static_cast<ArithmeticExpr*>(expr);
-    if (arithmetic_expr->left()->type() == ExprType::SUB_QUERY) {
-      auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->left().get());
-      Stmt *stmt;
-      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
-      if (!OB_SUCC(rc)) {
-        return rc;
-      }
-      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
-    } 
-    if (arithmetic_expr->right()->type() == ExprType::SUB_QUERY) {
-      auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->right().get());
-      Stmt *stmt;
-      auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
-      if (!OB_SUCC(rc)) {
-        return rc;
-      }
-      sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
-    }
-    rc = create_sub_query_stmt(db,arithmetic_expr->left().get());
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-    rc = create_sub_query_stmt(db,arithmetic_expr->right().get());
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-  }
-  return RC::SUCCESS;
-}
+// RC create_sub_query_stmt(Db* db, Expression *expr) {
+//   RC rc{RC::SUCCESS};
+//   if (expr->type() == ExprType::COMPARISON) {
+//     auto cmp_expr = static_cast<ComparisonExpr*>(expr);
+//     if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+//       auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->left().get());
+//       Stmt *stmt;
+//       auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+//       if (!OB_SUCC(rc)) {
+//         return rc;
+//       }
+//       sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+//     } 
+//     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+//       auto sub_query_expr = static_cast<SubQueryExpr*>(cmp_expr->right().get());
+//       Stmt *stmt;
+//       auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+//       if (!OB_SUCC(rc)) {
+//         return rc;
+//       }
+//       sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+//     }
+//     rc = create_sub_query_stmt(db,cmp_expr->left().get());
+//     if (!OB_SUCC(rc)) {
+//       return rc;
+//     }
+//     rc = create_sub_query_stmt(db,cmp_expr->right().get());
+//     if (!OB_SUCC(rc)) {
+//       return rc;
+//     }
+//   } else if (ExprType::ARITHMETIC ==  expr->type()) {
+//     // TODO 和ComparisonExpr的代碼高度相同，請優化一下
+//     auto arithmetic_expr = static_cast<ArithmeticExpr*>(expr);
+//     if (arithmetic_expr->left()->type() == ExprType::SUB_QUERY) {
+//       auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->left().get());
+//       Stmt *stmt;
+//       auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+//       if (!OB_SUCC(rc)) {
+//         return rc;
+//       }
+//       sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+//     } 
+//     if (arithmetic_expr->right()->type() == ExprType::SUB_QUERY) {
+//       auto sub_query_expr = static_cast<SubQueryExpr*>(arithmetic_expr->right().get());
+//       Stmt *stmt;
+//       auto rc = SelectStmt::create(db, sub_query_expr->get_sql_node()->selection, stmt);
+//       if (!OB_SUCC(rc)) {
+//         return rc;
+//       }
+//       sub_query_expr->set_select_stmt(static_cast<SelectStmt*>(stmt));
+//     }
+//     rc = create_sub_query_stmt(db,arithmetic_expr->left().get());
+//     if (!OB_SUCC(rc)) {
+//       return rc;
+//     }
+//     rc = create_sub_query_stmt(db,arithmetic_expr->right().get());
+//     if (!OB_SUCC(rc)) {
+//       return rc;
+//     }
+//   }
+//   return RC::SUCCESS;
+// }
 
 RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs) {
   
@@ -298,64 +306,49 @@ void SelectStmt::set_sub_queries(std::list<SubQueryExpr*>& other) {
 // bind_where
 // bind_group_by
 // bind_order_by
-RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, std::vector<Table*>*bound_tables)
+RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt,unique_ptr<ExpressionBinder>&binder)
 {
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
     return RC::INVALID_ARGUMENT;
   }
-  BinderContext binder_context;
-  if (bound_tables != nullptr) {
-    binder_context.set_tables(bound_tables);
-  }
   vector<Table *>                tables;
-  unordered_map<string, Table *> table_map;
-  unordered_map<string, string> alias_to_tb_name;
+  unordered_map<const char*, Table *> table_map; //
+  unordered_map<const char*, Table*> alias_to_table;
   std::vector<std::unique_ptr<ConjunctionExpr>> join_expres;
   /* ******************************************************{bind_from}*********************************************************************/ 
   
-  auto res = bind_from(db, select_sql.relations, table_map, alias_to_tb_name, binder_context, tables, join_expres);
-  if (!OB_SUCC(res.first)) {
+  auto res = bind_from(db, select_sql.relations, table_map, alias_to_table, binder, tables, join_expres);
+  if (!OB_SUCC(res)) {
     LOG_WARN("bound table ref failed");
-    return res.first;
+    return res;
   }
-
+  // 在bind select & where之前应该先将已绑定的table设置好
+  for (auto& pos : table_map)
+    binder->table_names_from_current_query_.insert({pos.first, pos.second});
+  for (auto& pos : alias_to_table) 
+    binder->table_alias_from_outer_queries_.insert({pos.first, pos.second});
+  binder->tables_from_current_query_.insert(binder->tables_from_current_query_.end(), tables.begin(), tables.end());
   /* ******************************************************{bind_select}*******************************************************************/ 
   // collect query fields in `select` statement
   vector<unique_ptr<Expression>> bound_expressions; // 可能直接丢给Projection opeator
-  unique_ptr<ExpressionBinder> expression_binder(res.second);
   RC rc{RC::SUCCESS};
-  if (rc = bind_select(expression_binder.get(), select_sql.expressions, bound_expressions); !OB_SUCC(rc)) {
+  if (rc = bind_select(binder.get(), select_sql.expressions, bound_expressions); !OB_SUCC(rc)) {
     return rc;
   }
 
   /* ******************************************************{bind_where}*******************************************************************/ 
   vector<unique_ptr<Expression>> bound_where_expressions; // 可以直接丢给Predicate Operator
-  if (rc = bind_where(db, expression_binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
+  if (rc = bind_where(db, binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
     return rc;
   }
-  // 在這裏爲所有的子查詢建立SelectStmt
-  std::vector<Table*> all_tables;
-  for (auto t : tables)
-    all_tables.emplace_back(t);
-  if (bound_tables != nullptr) {
-    for (auto t : *bound_tables) {
-      all_tables.emplace_back(t);
-    }
-  }
-  for (auto query : expression_binder->sub_queries()) {
-    Stmt* select_stmt;
-    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, &all_tables);
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-    query->set_select_stmt(static_cast<SelectStmt*>(select_stmt));
-  }
+  
+  
   
   // actually we can convert all expressions in bound_where_expressions to ComparisonExprs
   
   vector<unique_ptr<Expression>> bound_group_by_expressions; // 可以直接丢给Predicate Operator
-  if (rc = bind_group_by(expression_binder.get(), select_sql.group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
+  if (rc = bind_group_by(binder.get(), select_sql.group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
     return rc;
   }
 
@@ -365,7 +358,7 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, std::vecto
   if (nullptr != select_sql.having) {
     for (auto &expr : *select_sql.having) {
       std::unique_ptr<Expression> uniq_expr(expr);
-      rc = expression_binder->bind_expression(uniq_expr, bound_having_expressions);
+      rc = binder->bind_expression(uniq_expr, bound_having_expressions);
       if (!OB_SUCC(rc)) {
         return rc;
       }
@@ -380,16 +373,45 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, std::vecto
       return rc;
     }
   }
+  
 
   auto sel_stmt = new SelectStmt(std::move(tables), std::move(join_expres), std::move(bound_expressions), std::move(bound_where_expressions), std::move(bound_group_by_expressions), std::move(bound_having_expressions));
   sel_stmt->set_order_by_stmt(order_by_stmt);
   // 這個sub_queris list中包含了where和on後面的所有子查詢。
-  if (!expression_binder->sub_queries().empty()) {
-    sel_stmt->set_sub_queries(expression_binder->sub_queries());
+  std::list<SubQueryExpr*> sub_queries;
+  if (!binder->sub_queries().empty()) {
+    sub_queries.insert(sub_queries.end(), binder->sub_queries().begin(), binder->sub_queries().end());
+    binder->sub_queries().clear();
+    sel_stmt->using_outer_field_ = binder->using_outer_field_;
+    binder->using_outer_field_ = false;
+    for (auto& iter : binder->table_names_from_current_query_)
+      binder->table_names_from_outer_queries_.insert({iter.first, iter.second});
+    for (auto& iter : binder->table_alias_from_current_query_) 
+      binder->table_alias_from_outer_queries_.insert({iter.first, iter.second});
+    for (auto& iter : binder->expre_alias_from_current_query_)
+      binder->expre_alias_from_outer_queries_.insert({iter.first, iter.second});
+    binder->expre_alias_from_current_query_.clear();
+    binder->table_alias_from_current_query_.clear();
+    binder->table_names_from_current_query_.clear();
   }
   if (!bound_having_expressions.empty()) {
     sel_stmt->set_having(std::move(bound_having_expressions));
   }
+  //TODO现在已经对于当前的查询处理完所有的bind 工作，因此需要在递归的解析子查询之前将所有的以及处理的tables,expresssions以及相应的名字映射设置到ExpressionBinder中.
+  sel_stmt->using_outer_field_ = binder->using_outer_field_;
+  binder->using_outer_field_ = false;
+  for (auto query : sub_queries) {
+    Stmt* select_stmt;
+    rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, binder);
+    if (!OB_SUCC(rc)) {
+      return rc;
+    }
+    auto ss = static_cast<SelectStmt*>(select_stmt);
+    ss->using_outer_field_ = binder->using_outer_field_;
+    binder->using_outer_field_ = false;
+    query->set_select_stmt(ss);
+  }
+  sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());
   stmt = sel_stmt;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

@@ -50,6 +50,7 @@ enum class ExprType
   CONJUNCTION,  ///< 多个表达式使用同一种关系(AND或OR)来联结
   ARITHMETIC,   ///< 算术运算
   SUB_QUERY,
+  ALISAS,   //这个类型没有具体的类，只是用作一个标识告诉select_stmt在解析时应该alias映射中找相应的表达式或者table。
   CONSTANT_VALUE_LIST,
   AGGREGATION,  ///< 聚合运算
 };
@@ -109,6 +110,7 @@ public:
    * @brief 表达式值的长度
    */
   virtual int value_length() const { return -1; }
+  virtual RC deep_copy(unique_ptr<Expression> &other) const {return RC::UNIMPLEMENTED;}
 
   /**
    * @brief 表达式的名字，比如是字段名称，或者用户在执行SQL语句时输入的内容
@@ -161,6 +163,26 @@ private:
   std::string table_name_;
 };
 
+class AliasExpr : public Expression {
+public:
+  AliasExpr() : alias_name_() {}
+  AliasExpr(const char *alias_name) : alias_name_(alias_name) {}
+  virtual ~AliasExpr() = default;
+
+  ExprType type() const override { return ExprType::ALISAS; }
+  AttrType value_type() const override { return AttrType::CHARS; }
+
+  RC get_value(const Tuple &tuple, Value &value) const override { 
+    value.set_string(alias_name_.c_str(), alias_name_.length()); 
+    return RC::SUCCESS;
+  }
+
+  const char *alias_name() const { return alias_name_.c_str(); }
+  std::string to_string() const override { return "[star:*]"; }
+private:
+  std::string alias_name_;
+};
+
 class UnboundFieldExpr : public Expression
 {
 public:
@@ -210,15 +232,22 @@ public:
   Field &field() { return field_; }
 
   const Field &field() const { return field_; }
-
+  RC deep_copy(unique_ptr<Expression> &other) const override {
+    auto field_expr = new FieldExpr(field_);
+    field_expr->using_outer_field_ = using_outer_field_;
+    other.reset(field_expr);
+    return RC::SUCCESS;
+  }
   const char *table_name() const { return field_.table_name(); }
   const char *field_name() const { return field_.field_name(); }
 
   RC get_column(Chunk &chunk, Column &column) override;
-
+  auto set_using_outer_field() {using_outer_field_ = true;}
+  auto using_outer_field() const { return using_outer_field_; }
   RC get_value(const Tuple &tuple, Value &value) const override;
 
 private:
+  bool using_outer_field_{false};
   Field field_;
 };
 
@@ -243,7 +272,10 @@ public:
     value = value_;
     return RC::SUCCESS;
   }
-
+  RC deep_copy(unique_ptr<Expression> &other) const override{
+    other.reset(new ValueExpr(value_));
+    return RC::SUCCESS;
+  }
   ExprType type() const override { return ExprType::VALUE; }
   AttrType value_type() const override { return value_.attr_type(); }
   int      value_length() const override { return value_.length(); }
@@ -467,7 +499,14 @@ public:
     }
     return 4;  // sizeof(float) or sizeof(int)
   };
-
+  virtual RC deep_copy(unique_ptr<Expression> &other) const override {
+    std::unique_ptr<Expression> left_expr;
+    std::unique_ptr<Expression> right_expr;
+    left_->deep_copy(left_expr);
+    right_->deep_copy(right_expr);
+    other.reset(new ArithmeticExpr(arithmetic_type_, std::move(left_expr), std::move(right_expr)));
+    return RC::SUCCESS;
+  }
   RC get_value(const Tuple &tuple, Value &value) const override;
 
   RC get_column(Chunk &chunk, Column &column) override;
@@ -545,7 +584,12 @@ public:
   Type aggregate_type() const { return aggregate_type_; }
 
   std::unique_ptr<Expression> &child() { return child_; }
-
+  RC deep_copy(unique_ptr<Expression> &other) const override {
+    std::unique_ptr<Expression> child;
+    child_->deep_copy(child);
+    other.reset(new AggregateExpr(aggregate_type_, std::move(child)));
+    return RC::SUCCESS;
+  }
   const std::unique_ptr<Expression> &child() const { return child_; }
 
   std::unique_ptr<Aggregator> create_aggregator() const;

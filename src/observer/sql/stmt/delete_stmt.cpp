@@ -43,16 +43,19 @@ RC DeleteStmt::create(Db *db, const DeleteSqlNode &delete_sql, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  std::unordered_map<std::string, Table *> table_map;
-  table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
+  // std::unordered_map<std::string, Table *> table_map;
+  // std::unordered_map<std::string, Table *> alias_map;
+  // table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
   BinderContext ctx;
   ctx.add_table(table);
-  ExpressionBinder binder(ctx);
+  std::unique_ptr<ExpressionBinder> binder(new ExpressionBinder);
+  binder->tables_from_current_query_.emplace_back(table);
+  binder->table_names_from_current_query_.insert({table_name, table});
   vector<unique_ptr<Expression>> bound_where_expressions;
   if (delete_sql.conditions != nullptr && !delete_sql.conditions->empty()) {
     for (auto expr : *delete_sql.conditions) {
       std::unique_ptr<Expression> expr_ptr(expr);
-      auto rc = binder.bind_expression(expr_ptr, bound_where_expressions);
+      auto rc = binder->bind_expression(expr_ptr, bound_where_expressions);
       if (!OB_SUCC(rc)) {
         return rc;
       }
