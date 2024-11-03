@@ -54,6 +54,12 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       // field is not null while insert value is null.
       return RC::INSERT_NULL_VALUE;
     }
+    if(field->type() == AttrType::TEXTS) {
+      if (65535 < values[i].length()) {
+        LOG_WARN("Text length:%d, over max_length 65535", values[i].length());
+        return RC::INVALID_ARGUMENT;
+        }
+      }
     if(field->type() == AttrType::VECTORS) {
         if(inserts.values[i].attr_type() != AttrType::VECTORS) {
             return RC::SCHEMA_FIELD_TYPE_MISMATCH;
@@ -77,12 +83,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       if (RC::SUCCESS != rc) {
         return rc;
       }
-      if(field->type() == AttrType::TEXTS) {
-      if (65535 < values[i].length()) {
-        LOG_WARN("Text length:%d, over max_length 65535", values[i].length());
-        return RC::INVALID_ARGUMENT;
-        }
-      }
+      
       values[i].set_date(date_val);
     }
   }
