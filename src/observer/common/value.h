@@ -146,6 +146,7 @@ public:
   void set_text(const char *s, int len = 0);
   void set_string_from_other(const Value &other);
   void set_text_from_other(const Value &other);
+  void set_vector_from_other(const Value &other);
   void set_null() { attr_type_ = AttrType::NULLS; }
 private:
   AttrType attr_type_ = AttrType::UNDEFINED;
