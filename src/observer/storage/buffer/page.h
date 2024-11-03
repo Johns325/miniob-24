@@ -22,7 +22,7 @@ using TrxID = int32_t;
 static constexpr PageNum BP_INVALID_PAGE_NUM = -1;
 
 static constexpr PageNum BP_HEADER_PAGE = 0;
-
+static constexpr PageNum BP_TEXT_SIZE = 64;
 static constexpr const int BP_PAGE_SIZE      = (1 << 13);
 static constexpr const int BP_PAGE_DATA_SIZE = (BP_PAGE_SIZE - sizeof(PageNum) - sizeof(LSN) - sizeof(CheckSum));
 

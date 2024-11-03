@@ -173,6 +173,8 @@ auto Db::drop_table(const std::string tb_name) -> RC {
   files.reserve(2 + pos->second->table_meta().index_num());
   files.emplace_back(table_data_file(this->path_.c_str(), tb_name.c_str()));
   files.emplace_back(table_meta_file(path_.c_str(), tb_name.c_str()));
+  files.emplace_back(table_text_file(path_.c_str(), tb_name.c_str()));
+  files.emplace_back(table_vector_file(path_.c_str(), tb_name.c_str()));
   auto table = pos->second;
   auto tb_meta = table->table_meta();
   for (int i = 0; i < table->table_meta().index_num(); i++) {
@@ -184,6 +186,8 @@ auto Db::drop_table(const std::string tb_name) -> RC {
   for(auto &file : files) {
     if (unlink(file.c_str()) < 0) {
       LOG_INFO("failed to remove file %s", file.c_str());
+    } else {
+      buffer_pool_manager_->close_file(file.data());
     }
   }
   

@@ -55,6 +55,7 @@ RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int at
   field_id_ = field_id;
   nullable_ = nullable;
   LOG_INFO("Init a field with name=%s", name);
+   if (attr_type == AttrType::TEXTS || attr_type == AttrType::VECTORS) { attr_len_ = 16; }
   return RC::SUCCESS;
 }
 

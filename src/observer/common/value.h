@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/memory.h"
 #include "common/type/attr_type.h"
 #include "common/type/data_type.h"
+#include "common/type/text_type.h"
 
 /**
  * @brief 属性的值
@@ -37,6 +38,7 @@ public:
   friend class DateType;
   friend class VectorType;
   friend class SumAggregator;
+  friend class TextType;
 
   Value() = default;
 
@@ -112,6 +114,7 @@ public:
   void set_value(const Value &value);
   void set_boolean(bool val);
   void set_date(int date_val);
+  void set_vector(const float *data, int length);
 
   string to_string() const;
 
@@ -140,8 +143,9 @@ public:
   void set_int(int val);
   void set_float(float val);
   void set_string(const char *s, int len = 0);
-  void set_vector(const float* vec,int len);
+  void set_text(const char *s, int len = 0);
   void set_string_from_other(const Value &other);
+  void set_text_from_other(const Value &other);
   void set_null() { attr_type_ = AttrType::NULLS; }
 private:
   AttrType attr_type_ = AttrType::UNDEFINED;

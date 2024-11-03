@@ -17,3 +17,6 @@ See the Mulan PSL v2 for more details. */
 static GlobalContext global_context;
 
 GlobalContext &GlobalContext::instance() { return global_context; }
+
+static std::unordered_map<std::string, int> vector_table_map;
+std::unordered_map<std::string, int> &vector_map() { return vector_table_map; }

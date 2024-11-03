@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <unordered_map>
+#include<string>
 class BufferPoolManager;
 class DefaultHandler;
 class TrxKit;
@@ -32,3 +34,5 @@ struct GlobalContext
 };
 
 #define GCTX GlobalContext::instance()
+
+std::unordered_map<std::string, int> &vector_map();

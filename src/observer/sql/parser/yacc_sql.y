@@ -117,6 +117,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         ON
         LOAD
         DATA
+        TEXT_T
         INFILE
         VIEW
         EXPLAIN
@@ -520,6 +521,7 @@ type:
     | FLOAT_T  { $$ = static_cast<int>(AttrType::FLOATS); }
     | DATE_T   { $$ = static_cast<int>(AttrType::DATES); }
     | VECTOR_T { $$ = static_cast<int>(AttrType::VECTORS); }
+    | TEXT_T     { $$ = static_cast<int>(AttrType::TEXTS); }
     ;
 insert_stmt:        /*insert   语句的语法解析树*/
   INSERT INTO ID VALUES LBRACE insert_val value_list RBRACE 

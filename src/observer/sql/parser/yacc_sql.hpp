@@ -107,26 +107,27 @@ extern int yydebug;
     ON = 308,                      /* ON  */
     LOAD = 309,                    /* LOAD  */
     DATA = 310,                    /* DATA  */
-    INFILE = 311,                  /* INFILE  */
-    VIEW = 312,                    /* VIEW  */
-    EXPLAIN = 313,                 /* EXPLAIN  */
-    STORAGE = 314,                 /* STORAGE  */
-    FORMAT = 315,                  /* FORMAT  */
-    EQ = 316,                      /* EQ  */
-    LT = 317,                      /* LT  */
-    GT = 318,                      /* GT  */
-    LE = 319,                      /* LE  */
-    GE = 320,                      /* GE  */
-    NE = 321,                      /* NE  */
-    L2_DISTANCE = 322,             /* L2_DISTANCE  */
-    INNER_PRODUCT = 323,           /* INNER_PRODUCT  */
-    COSINE_DISTANCE = 324,         /* COSINE_DISTANCE  */
-    NUMBER = 325,                  /* NUMBER  */
-    FLOAT = 326,                   /* FLOAT  */
-    ID = 327,                      /* ID  */
-    SSS = 328,                     /* SSS  */
-    VECTOR_DATA = 329,             /* VECTOR_DATA  */
-    UMINUS = 330                   /* UMINUS  */
+    TEXT_T = 311,                  /* TEXT_T  */
+    INFILE = 312,                  /* INFILE  */
+    VIEW = 313,                    /* VIEW  */
+    EXPLAIN = 314,                 /* EXPLAIN  */
+    STORAGE = 315,                 /* STORAGE  */
+    FORMAT = 316,                  /* FORMAT  */
+    EQ = 317,                      /* EQ  */
+    LT = 318,                      /* LT  */
+    GT = 319,                      /* GT  */
+    LE = 320,                      /* LE  */
+    GE = 321,                      /* GE  */
+    NE = 322,                      /* NE  */
+    L2_DISTANCE = 323,             /* L2_DISTANCE  */
+    INNER_PRODUCT = 324,           /* INNER_PRODUCT  */
+    COSINE_DISTANCE = 325,         /* COSINE_DISTANCE  */
+    NUMBER = 326,                  /* NUMBER  */
+    FLOAT = 327,                   /* FLOAT  */
+    ID = 328,                      /* ID  */
+    SSS = 329,                     /* SSS  */
+    VECTOR_DATA = 330,             /* VECTOR_DATA  */
+    UMINUS = 331                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -135,7 +136,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 137 "yacc_sql.y"
+#line 138 "yacc_sql.y"
 
   ParsedSqlNode *                            sql_node;
   Expression *                          condition;
@@ -163,7 +164,7 @@ union YYSTYPE
   std::vector<Assignment*>*                  assignment_ptr_list;
   std::vector<Value*>*                       const_value_list_type;
 
-#line 167 "yacc_sql.hpp"
+#line 168 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

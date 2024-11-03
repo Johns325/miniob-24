@@ -43,6 +43,11 @@ Table::~Table()
     data_buffer_pool_ = nullptr;
   }
 
+  if(text_buffer_pool_ != nullptr) {
+    text_buffer_pool_->close_file();
+    text_buffer_pool_ = nullptr;
+  }
+
   for (vector<Index *>::iterator it = indexes_.begin(); it != indexes_.end(); ++it) {
     Index *index = *it;
     delete index;
@@ -123,6 +128,49 @@ RC Table::create(Db *db, int32_t table_id, const char *path, const char *name, c
     return rc;
   }
 
+  bool text_exist = false;
+  for (const FieldMeta &field : *table_meta_.field_metas()) {
+    if (AttrType::TEXTS == field.type()) {
+      text_exist = true;
+      break;
+    }
+  }
+
+  if (text_exist) {
+    std::string text_file = table_text_file(base_dir, name);
+    rc = bpm.create_file(text_file.c_str());
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create disk buffer pool of text file. file name=%s", text_file.c_str());
+      return rc;
+    }
+    rc = init_text_handler(base_dir);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create table %s due to init text handler failed.", text_file.c_str());
+      // don't need to remove the data_file
+      return rc;
+    }
+  }
+
+  bool vector_exist = false;
+  for (const FieldMeta &field : *table_meta_.field_metas()) {
+    if (AttrType::VECTORS == field.type()) {
+      vector_exist = true;
+      break;
+    }
+  }
+  if (vector_exist) {
+    std::string vector = table_vector_file(base_dir, name);
+    rc = bpm.create_file(vector.c_str());
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create disk buffer pool of text file. file name=%s", vector.c_str());
+      return rc;
+    }
+    rc = init_vector_handler(base_dir);
+    if (rc != RC::SUCCESS) {
+      // don't need to remove the data_file
+      return rc;
+    }
+  }
   LOG_INFO("Successfully create table %s:%s", base_dir, name);
   return rc;
 }
@@ -151,6 +199,17 @@ RC Table::open(Db *db, const char *meta_file, const char *base_dir)
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to open table %s due to init record handler failed.", base_dir);
     // don't need to remove the data_file
+    return rc;
+  }
+
+  rc = init_text_handler(base_dir);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+
+  rc = init_vector_handler(base_dir);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to open table %s due to init vector handler failed.", base_dir);
     return rc;
   }
 
@@ -280,7 +339,7 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   for (int i = 0; i < value_num && OB_SUCC(rc); i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &    value = values[i];
-    if (field->type() != value.attr_type() && value.attr_type() != AttrType::NULLS) {
+    if (field->type() != value.attr_type() && value.attr_type() != AttrType::NULLS && (field->type() != AttrType::TEXTS && value.attr_type() != AttrType::CHARS)) {
       Value real_value;
       rc = Value::cast_to(value, field->type(), real_value);
       if (OB_FAIL(rc)) {
@@ -317,7 +376,21 @@ RC Table::set_value_to_record(char *record_data, const Value &value, const Field
     *(static_cast<char*>(record_data + field->offset() + field->len())) = 1;
     return RC::SUCCESS;
   }
-  memcpy(record_data + field->offset(), value.data(), copy_len);
+  if (AttrType::TEXTS == field->type()) {
+      // 需要将value中的字符串插入到文件中，然后将offset、length写入record
+      int64_t position[2];
+      position[1] = value.length();
+      text_buffer_pool_->append_text(position[0], position[1], value.data());
+      memcpy(record_data + field->offset(), position, 2 * sizeof(int64_t));
+    } else if(AttrType::VECTORS == field->type()) {
+      int64_t position[2];
+      position[1] = value.length();
+      vector_buffer_pool_->append_vector(position[0], position[1], value.data());
+      memcpy(record_data + field->offset(), position, 2 * sizeof(int64_t));
+    } 
+    else {
+      memcpy(record_data + field->offset(), value.data(), copy_len);
+    }
   if (field->nullable()) {
     *(static_cast<char*>(record_data + field->offset() + field->len())) = 0;
   }
@@ -562,5 +635,72 @@ RC Table::sync()
 
   rc = data_buffer_pool_->flush_all_pages();
   LOG_INFO("Sync table over. table=%s", name());
+  return rc;
+}
+
+RC Table::write_text(int64_t &offset, int64_t length, const char *data)
+{
+  RC rc = RC::SUCCESS;
+  rc = text_buffer_pool_->append_text(offset, length, data);
+  if (RC::SUCCESS != rc) {
+    offset = -1;
+    length = -1;
+  }
+  return rc;
+}
+RC Table::read_text(int64_t offset, int64_t length, char *data) const
+{
+  RC rc = RC::SUCCESS;
+  if (0 > offset || 0 > length) {
+    return RC::INVALID_ARGUMENT;
+  }
+  rc = text_buffer_pool_->get_text(offset, length, data);
+  if (RC::SUCCESS != rc) {
+  }
+  return rc;
+}
+RC Table::init_text_handler(const char *base_dir)
+{ 
+  std::string text_file = table_text_file(base_dir, table_meta_.name());
+  BufferPoolManager &bpm = db_->buffer_pool_manager();
+  RC                 rc  = bpm.open_file(db_->log_handler(), text_file.c_str(), text_buffer_pool_);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+  return rc;
+}
+
+RC Table::write_vector(int64_t &offset, int64_t length, const char *data)
+{
+  RC rc = RC::SUCCESS;
+  rc = vector_buffer_pool_->append_vector(offset, length, data);
+  if (RC::SUCCESS != rc) {
+    LOG_WARN("Failed to append text into disk_buffer_pool, rc=%s", strrc(rc));
+    offset = -1;
+    length = -1;
+  }
+  return rc;
+}
+RC Table::read_vector(int64_t offset, int64_t length, char *data) const
+{
+  RC rc = RC::SUCCESS;
+  if (0 > offset || 0 > length) {
+    LOG_ERROR("Invalid param: text offset %ld, length %ld", offset, length);
+    return RC::INVALID_ARGUMENT;
+  }
+  rc = vector_buffer_pool_->get_vector(offset, length, data);
+  if (RC::SUCCESS != rc) {
+    LOG_WARN("Failed to get text from disk_buffer_pool, rc=%s", strrc(rc));
+  }
+  return rc;
+}
+RC Table::init_vector_handler(const char *base_dir)
+{ 
+  std::string vector_file = table_vector_file(base_dir, table_meta_.name());
+  BufferPoolManager &bpm = db_->buffer_pool_manager();
+  RC                 rc  = bpm.open_file(db_->log_handler(), vector_file.c_str(), vector_buffer_pool_);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
   return rc;
 }

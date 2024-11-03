@@ -273,6 +273,14 @@ public:
 
   const char *filename() const { return file_name_.c_str(); }
 
+  RC append_text(int64_t &offset, int64_t length, const char *data);
+  
+  RC get_text(int64_t offset, int64_t length, char *data);
+
+  RC append_vector(int64_t &offset, int64_t length, const char *data);
+  
+  RC get_vector(int64_t offset, int64_t length, char *data);
+
 protected:
   RC allocate_frame(PageNum page_num, Frame **buf);
 
