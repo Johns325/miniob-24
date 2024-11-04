@@ -313,6 +313,33 @@ void SelectStmt::set_sub_queries(std::list<SubQueryExpr*>& other) {
     }
   }
 
+
+bool SelectStmt::alias_check(SelectSqlNode& sql_node) {
+  std::unordered_set<std::string> alias;
+  for (auto rel : sql_node.relations) {
+    if ((!rel->relation_alias.empty())) {
+      if ( alias.find(rel->relation_alias) != alias.end()) 
+        return false;
+      alias.insert(rel->relation_alias);
+    }
+  }
+  std::unordered_set<std::string> expr_alias;
+  for (auto &expr : sql_node.expressions) {
+    if (nullptr != expr->alias()) {
+      string str(expr->alias());
+      if (!str.empty()) {
+        if (expr_alias.find(str) != expr_alias.end()) {
+          return false;
+        }
+        expr_alias.insert(str);
+      }
+    }
+  }
+  alias.clear();
+  expr_alias.clear();
+  return true;
+}
+
 // bind_from
 // bind_select
 // bind_where
@@ -323,6 +350,9 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
     return RC::INVALID_ARGUMENT;
+  }
+  if (!alias_check(select_sql)) {
+    return RC::INTERNAL;
   }
   Bound_Info info;
   /* ******************************************************{bind_from}*********************************************************************/ 

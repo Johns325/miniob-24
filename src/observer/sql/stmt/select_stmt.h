@@ -67,6 +67,7 @@ public:
 
   StmtType type() const override { return StmtType::SELECT; }
   void set_sub_queries(std::list<SubQueryExpr*>& other);
+  static bool alias_check(SelectSqlNode& sql_node);
   std::list<SubQueryExpr*>& sub_queries() { return sub_queries_;}
 public:
   static RC create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info* upper_info);
