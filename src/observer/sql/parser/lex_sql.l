@@ -175,7 +175,7 @@ DATE                                    RETURN_TOKEN(DATE_T);
 NOT                                     RETURN_TOKEN(NOT);
 LIKE                                    RETURN_TOKEN(LIKE);
 VALUES                                  RETURN_TOKEN(VALUES);
-ALIAS                                   RETURN_TOKEN(ALIAS);
+
 AS                                      RETURN_TOKEN(AS);
 VIEW                                    RETURN_TOKEN(VIEW);
 ASC                                     RETURN_TOKEN(ASC);

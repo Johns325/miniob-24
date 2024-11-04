@@ -76,7 +76,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         CALC
         null
         SELECT
-        ALIAS
+        
         ASC
         ORDER
         DESC
@@ -296,10 +296,12 @@ alias_stmt: // ok
   }
   | ID 
   {
+    printf("alias:%s\n", $1);
     $$ = $1;
   }
   | AS ID {
     $$ = $2;
+    printf("alias:%s\n", $2);
   }
   ;
 begin_stmt:
@@ -759,6 +761,7 @@ expression_list:
       $$ = new std::vector<std::unique_ptr<Expression>>;
       if ($2) {
         $1->set_alias(std::string($2));
+        printf("alias:%s\n", $2);
         free($2);
       }
       $$->emplace_back($1);
@@ -792,6 +795,7 @@ expression:
       delete $1;
     }
     | '*' {
+      printf("star expression\n");
       $$ = new StarExpr();
     }
     | expression '+' expression {
@@ -876,6 +880,7 @@ rel_attr:
 relation:
     ID {
       $$ = $1;
+      printf("relation:%s\n",$1);
     }
     ;
 rel_list:
