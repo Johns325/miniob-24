@@ -760,6 +760,9 @@ expression_list:
     {
       $$ = new std::vector<std::unique_ptr<Expression>>;
       if ($2) {
+        if ($1->type() == ExprType::STAR ) {
+          YYERROR;
+        }
         $1->set_alias(std::string($2));
         printf("alias:%s\n", $2);
         free($2);
