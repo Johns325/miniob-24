@@ -161,6 +161,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
   const char *field_name = unbound_field_expr->field_name();
   string name = (is_blank(table_name) ? field_name : string(table_name) + "." + string(field_name));
   Table *table = nullptr;
+  bool outer_reference {false};
   if (is_blank(table_name)) {
     if (context_.query_tables().size() != 1) {
       LOG_INFO("cannot determine table for field: %s", field_name);
@@ -178,7 +179,10 @@ RC ExpressionBinder::bind_unbound_field_expression(
           return RC::SCHEMA_TABLE_NOT_EXIST;
         }
         // 在上层找到
+        // 这里还需要做一个映射以保证能给获取到引用的外部值(i.e. col)
         reference_outer_query_ = true;
+        // expressions_.emplace_front(expr.get());
+        outer_reference = true;
       }
       // 在本层查询的alias中找到
     }
@@ -197,7 +201,11 @@ RC ExpressionBinder::bind_unbound_field_expression(
     field_expr->set_name((context_.query_tables().size() > 1 ? name : field_name));
     bound_expressions.emplace_back(field_expr);
   }
-
+  if (outer_reference) {
+    for (auto &expr : bound_expressions) {
+      expressions_.emplace_back(expr.get());
+    }
+  }
   return RC::SUCCESS;
 }
 

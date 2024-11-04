@@ -154,6 +154,8 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
       ++join_pred_index;
     }
   }
+  if (select_stmt->break_pipeline_)
+    table_oper->set_break_pipeline(true);
 
   unique_ptr<LogicalOperator> predicate_oper;
   std::vector<std::unique_ptr<Expression>> condition_expressions;

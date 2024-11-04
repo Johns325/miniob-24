@@ -182,6 +182,7 @@ ASC                                     RETURN_TOKEN(ASC);
 ORDER                                   RETURN_TOKEN(ORDER);
 IS                                      RETURN_TOKEN(IS);
 DELETE                                  RETURN_TOKEN(DELETE);
+OR                                  RETURN_TOKEN(OR);
 UPDATE                                  RETURN_TOKEN(UPDATE);
 SET                                     RETURN_TOKEN(SET);
 BEGIN                                   RETURN_TOKEN(TRX_BEGIN);

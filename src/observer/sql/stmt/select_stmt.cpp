@@ -409,11 +409,18 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   for (auto query : sub_queries) {
     Stmt* select_stmt;
     rc = SelectStmt::create(db, query->sql_node_->selection, select_stmt, &info);
-  if (!OB_SUCC(rc)) {
+    if (!OB_SUCC(rc)) {
       return rc;
     }
     auto ss = static_cast<SelectStmt*>(select_stmt);
+    if (ss->using_outer_field_) {
+      query->set_break_pipeline(true);
+    }
+    query->set_expressions(ss->reference_expressions_);
     query->set_select_stmt(ss);
+  }
+  if (!binder->expressions_.empty()) {
+    sel_stmt->reference_expressions_.swap(binder->expressions_);
   }
   sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());
   stmt = sel_stmt;

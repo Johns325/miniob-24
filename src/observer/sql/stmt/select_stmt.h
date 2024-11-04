@@ -92,7 +92,9 @@ private:
   std::vector<std::unique_ptr<Expression>> group_by_; // group by
   std::vector<std::unique_ptr<Expression>> having_; // having
   OrderByStmt                             *order_by_stmt{nullptr}; // order by
+  std::list<Expression*>                   reference_expressions_;
   bool using_outer_field_{false};
+  bool break_pipeline_{false};
 };
 
 

@@ -89,9 +89,11 @@ public:
   virtual RC tuple_schema(TupleSchema &schema) const { return RC::UNIMPLEMENTED; }
 
   void add_child(std::unique_ptr<PhysicalOperator> oper) { children_.emplace_back(std::move(oper)); }
-
+  void set_break_pipeline(bool f) {break_pipeline_ = f;}
+  auto break_pipeline() const -> bool { return break_pipeline_; }
   std::vector<std::unique_ptr<PhysicalOperator>> &children() { return children_; }
 
 protected:
   std::vector<std::unique_ptr<PhysicalOperator>> children_;
+  bool break_pipeline_{false};
 };

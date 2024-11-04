@@ -240,7 +240,7 @@ public:
   }
   const char *table_name() const { return field_.table_name(); }
   const char *field_name() const { return field_.field_name(); }
-
+  void put_tuple(Tuple*t) {t_ = t;}
   RC get_column(Chunk &chunk, Column &column) override;
   auto set_using_outer_field() {using_outer_field_ = true;}
   auto using_outer_field() const { return using_outer_field_; }
@@ -248,7 +248,10 @@ public:
 
 private:
   bool using_outer_field_{false};
+  bool value_generated_{false};
   Field field_;
+  Tuple * t_{nullptr};
+  Value v_;
 };
 
 /**
@@ -315,6 +318,18 @@ public:
   int      value_length() const override { return 0; }
   RC get_value(const Tuple &tuple, Value &value) const override { return RC::SUCCESS; }
   auto get_sql_node() -> ParsedSqlNode* { return sql_node_;}
+  void set_break_pipeline(bool f) {break_pipeline_ = true;}
+  void set_expressions(std::list<Expression*>&expr) {
+    expressions_.insert(expressions_.end(), expr.begin(), expr.end());
+  }
+  void hand_expressions(Tuple *t) {
+    for (auto expr : expressions_) {
+      if (expr->type() == ExprType::FIELD) {
+        static_cast<FieldExpr*>(expr)->put_tuple(t);
+      }
+    }
+  }
+  auto break_pipeline() const -> bool { return break_pipeline_; }
   auto select_stmt() -> SelectStmt* {return select_stmt_;}
   void set_select_stmt(SelectStmt* stmt) {select_stmt_ = stmt;}
   PhysicalOperator* get_physical_operator() {return physical_sub_query_;}
@@ -324,6 +339,8 @@ private:
   SelectStmt* select_stmt_{nullptr};
   LogicalOperator *logical_sub_query_{nullptr};
   PhysicalOperator* physical_sub_query_{nullptr};
+  bool break_pipeline_{false};
+  std::list<Expression*> expressions_; //这一组expressions引用了外部值。
 };
 
 
@@ -399,6 +416,7 @@ public:
   RC try_get_value(Value &value) const override;
   bool is_range_comparator() const { return  comp_ == CompOp::IN_OP || comp_ == CompOp::NOT_IN;}
   RC handle_sub_query(PhysicalOperator*query_phy_oper , std::vector<Value>&values, bool);
+  RC handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , std::vector<Value>&values, bool, Tuple*t);
   /**
    * compare the two tuple cells
    * @param value the result of comparison

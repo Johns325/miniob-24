@@ -20,6 +20,9 @@ using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
 {
+  if (t_ != nullptr) {
+    return t_->find_cell(TupleCellSpec(table_name(), field_name()), value);
+  }
   return tuple.find_cell(TupleCellSpec(table_name(), field_name()), value);
 }
 
@@ -354,6 +357,28 @@ RC ComparisonExpr::handle_sub_query(PhysicalOperator*query_phy_oper , std::vecto
   }
   // query_phy_oper->close();
   set_emited(left);
+  return RC::SUCCESS;
+}
+
+RC ComparisonExpr::handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , std::vector<Value>&values, bool, Tuple *t) {
+  RC rc{RC::SUCCESS};
+  TupleSchema schema;
+  PhysicalOperator*query_phy_oper = expr->get_physical_operator();
+  expr->hand_expressions(t);
+  query_phy_oper->tuple_schema(schema);
+  if (schema.cell_num() > 1) {
+    return RC::SUB_QUERY_RETURNS_MULTIPLE_COLUMNS;
+  }
+  values.clear();
+  rc = query_phy_oper->open(trx);
+  if (!OB_SUCC(rc)) {
+    return rc;
+  }
+  while ((rc = query_phy_oper->next()) == RC::SUCCESS) {
+    Value v;
+    query_phy_oper->current_tuple()->cell_at(0, v);
+    values.emplace_back(std::move(v));
+  }
   return RC::SUCCESS;
 }
 

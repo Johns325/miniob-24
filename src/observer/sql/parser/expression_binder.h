@@ -49,7 +49,7 @@ public:
     pos = outer_info_->alias_2_tables.find(tb_name);
     return (pos == outer_info_->alias_2_tables.end() ? nullptr : pos->second);
   }
-  void set_upper_info(Bound_Info * info) {info_ = info;}
+  void set_upper_info(Bound_Info * info) {outer_info_ = info;}
   auto bound_info() -> Bound_Info*{ return info_; }
 private:
   std::vector<Table *> query_tables_;
@@ -93,4 +93,5 @@ private:
   BinderContext &context_;
   std::list<SubQueryExpr*> sub_querys_; // 存放所有的子查詢
   bool reference_outer_query_{false};
+  std::list<Expression*> expressions_;
 };

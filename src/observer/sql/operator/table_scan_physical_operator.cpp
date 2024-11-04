@@ -22,7 +22,10 @@ RC TableScanPhysicalOperator::open(Trx *trx)
 {
   RC rc = table_->get_record_scanner(record_scanner_, trx, mode_);
   if (rc == RC::SUCCESS) {
-    tuple_.set_schema(table_, table_->table_meta().field_metas());
+    if (!schema_setted_) {
+      tuple_.set_schema(table_, table_->table_meta().field_metas());
+      schema_setted_ = true;
+    }
   }
   trx_ = trx;
   // 先對ComparisonExpr中的子查詢執行相應的查詢. table scan的多個predicate也是用AND鏈接
@@ -32,12 +35,16 @@ RC TableScanPhysicalOperator::open(Trx *trx)
     }
     auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
-      rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true), true);
+      auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->left().get());
+      if (!sub_query->break_pipeline())
+        rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(true), true);
       if (!OB_SUCC(rc)) 
       return rc;
     }
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
-      rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false), true);
+      auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->right().get());
+      if (!sub_query->break_pipeline())
+        rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), true);
       if (!OB_SUCC(rc))
         return rc;
     }
@@ -92,7 +99,23 @@ RC TableScanPhysicalOperator::filter(RowTuple &tuple, bool &result)
   RC    rc = RC::SUCCESS;
   Value value;
   for (unique_ptr<Expression> &expr : predicates_) {
-    rc = expr->get_value(tuple, value);
+    
+    auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
+    if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+      auto sub_expr = static_cast<SubQueryExpr*>(cmp_expr->left().get());
+      if (sub_expr->break_pipeline()) {
+        sub_expr->hand_expressions(&tuple);
+      }
+      cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(true), true, &tuple);
+    }
+    if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+      auto sub_expr = static_cast<SubQueryExpr*>(cmp_expr->right().get());
+      if (sub_expr->break_pipeline()) {
+        sub_expr->hand_expressions(&tuple);
+      }
+      cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(false), false, &tuple);
+    }
+    rc = expr->get_value(tuple, value);    
     if (rc != RC::SUCCESS) {
       return rc;
     }

@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/physical_operator.h"
 
 class FilterStmt;
+class Trx;
 
 /**
  * @brief 过滤/谓词物理算子
@@ -39,14 +40,10 @@ public:
   Tuple *current_tuple() override;
 
   RC tuple_schema(TupleSchema &schema) const override;
-  // std::list<SubQueryExpr*>& sub_queries() { return sub_queries_; }
-  // void set_sub_queries(std::list<SubQueryExpr*>& other) {
-  //   for (auto iter = other.begin(); iter != other.end(); ++iter) {
-  //     sub_queries_.push_back(*iter);
-  //     *iter = nullptr;
-  //   }
-  // }
+  void hand_all_sub_queries();
+  void hand_all_sub_queries_every_time(Tuple *t);
 private:
   std::unique_ptr<Expression> expression_; 
+  Trx *trx_{nullptr};
   // std::list<SubQueryExpr*> sub_queries_;
 };

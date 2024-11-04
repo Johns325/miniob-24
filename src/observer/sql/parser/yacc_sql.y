@@ -128,6 +128,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         LE
         GE
         NE
+        OR
         L2_DISTANCE
         INNER_PRODUCT
         COSINE_DISTANCE
@@ -178,6 +179,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <number>              number
 %type <number>              null_def
 %type <string>              relation
+%type <boolean>             and_clause
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
 %type <attr_infos>          attr_def_list
@@ -933,12 +935,20 @@ condition_list:
       $$->emplace_back($1);
       // delete $1;
     }
-    | condition AND condition_list {
+    | condition and_clause condition_list {
+      //TODO
       $$ = $3;
       $$->emplace_back($1);
       // delete $1;
     }
     ;
+and_clause:
+  AND {
+    $$ = true;
+  }
+  | OR {
+    $$ = false;
+  };
 condition:
     expression comp_op expression {
       std::unique_ptr<Expression> left($1);

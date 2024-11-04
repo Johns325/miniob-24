@@ -217,6 +217,9 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
     LOG_TRACE("use index scan");
   } else {
     auto table_scan_oper = new TableScanPhysicalOperator(table, table_get_oper.read_write_mode());
+    if (table_get_oper.break_pipeline()) {
+      table_scan_oper->set_break_pipeline(true);
+    }
     table_scan_oper->set_predicates(std::move(predicates));
     oper = unique_ptr<PhysicalOperator>(table_scan_oper);
     LOG_TRACE("use table scan");
@@ -244,6 +247,9 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
 
   unique_ptr<Expression> expression = std::move(expressions.front());
   oper = unique_ptr<PhysicalOperator>(new PredicatePhysicalOperator(std::move(expression)));
+  if (pred_oper.break_pipeline()) {
+    oper->set_break_pipeline(true);
+  }
   oper->add_child(std::move(child_phy_oper));
   return rc;
 }
