@@ -149,6 +149,7 @@ struct SelectSqlNode
   // std::vector<order_by>                    order_seqs;
   std::vector<OrderBySqlNode>              *order_by{nullptr};
   std::vector<Expression*>* having{nullptr};
+  int and_flag{1};
 };
 
 /**

@@ -43,6 +43,9 @@ RC PredicatePushdownRewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bo
 
   std::unique_ptr<Expression>             &predicate_expr = predicate_oper_exprs.front();
   std::vector<std::unique_ptr<Expression>> pushdown_exprs;
+  if (predicate_expr->type() == ExprType::CONJUNCTION && static_cast<ConjunctionExpr*>(predicate_expr.get())->conjunction_type() == ConjunctionExpr::Type::OR) {
+    return rc;
+  }
   rc = get_exprs_can_pushdown(predicate_expr, pushdown_exprs);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to get exprs can pushdown. rc=%s", strrc(rc));

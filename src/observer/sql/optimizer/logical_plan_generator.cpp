@@ -134,12 +134,12 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   const std::vector<Table *> &tables = select_stmt->tables();
   int join_pred_index{0};
   for (Table *table : tables) {
-    std::vector<std::unique_ptr<Expression>> push_down_preds;
-    select_stmt->predicates_push_down(table->name(), push_down_preds);
+    // std::vector<std::unique_ptr<Expression>> push_down_preds;
+    // select_stmt->predicates_push_down(table->name(), push_down_preds);
     auto tb_get_ptr = new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY);
-    if (!push_down_preds.empty()) {
-      tb_get_ptr->set_predicates(std::move(push_down_preds));
-    }
+    // if (!push_down_preds.empty()) {
+    //   tb_get_ptr->set_predicates(std::move(push_down_preds));
+    // }
     unique_ptr<LogicalOperator> table_get_oper(tb_get_ptr);
     if (table_oper == nullptr) {
       table_oper = std::move(table_get_oper);
@@ -161,7 +161,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   std::vector<std::unique_ptr<Expression>> condition_expressions;
   select_stmt->remaining_predicates(condition_expressions);
   if (!condition_expressions.empty()) {
-    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, std::move(condition_expressions)));
+    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr((select_stmt->and_flag_ ? ConjunctionExpr::Type::AND : ConjunctionExpr::Type::OR), std::move(condition_expressions)));
     predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
   }
   // 對這個查詢的所有子查詢生產查詢計劃. 並且把所有的子查詢都放到ProjectPhysicalOperator中，這樣可以統一執行open操作

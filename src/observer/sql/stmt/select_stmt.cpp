@@ -452,6 +452,7 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   if (!binder->expressions_.empty()) {
     sel_stmt->reference_expressions_.swap(binder->expressions_);
   }
+  sel_stmt->and_flag_ = select_sql.and_flag == 1;
   sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());
   stmt = sel_stmt;
   return RC::SUCCESS;

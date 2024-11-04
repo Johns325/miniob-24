@@ -52,6 +52,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
   return expr;
 }
 
+static int and_flag  = 1;
 %}
 
 %define api.pure full
@@ -730,7 +731,8 @@ select_stmt:        /*  select 语句的语法解析树*/
         // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free($4);
-     
+      // printf("and flag:%d\n", and_flag);
+      selection.and_flag = and_flag;
       // where 
       if ($7 != nullptr) {
         selection.conditions = $7;
@@ -963,6 +965,7 @@ and_clause:
   }
   | OR {
     $$ = false;
+    and_flag = 0;
   };
 condition:
     expression comp_op expression {
