@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
+#include <unordered_set>
 
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -729,7 +730,20 @@ select_stmt:        /*  select 语句的语法解析树*/
         // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free($4);
-      
+      unordered_set<string> alias;
+      for (auto rel : selection.relations) {
+        if (alias.find(rel->relation_alias) != alias.end()) {
+          YYERROR;
+        } 
+        alias.insert(rel->relation_alias);
+      }
+      alias.clear();
+      for (auto &expr : selection.expressions) {
+        if (!common::is_blank(expr->alias()) && alias.find(expr->alias()) != alias.end()) {
+          YYERROR;
+        } 
+        alias.insert(expr->alias());
+      }
       // where 
       if ($7 != nullptr) {
         selection.conditions = $7;
