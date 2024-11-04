@@ -121,6 +121,9 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
       return DropTableStmt::create(db, sql_node.drop_table, stmt);
     }
 
+    case SCF_CREATE_VIEW: {
+      return CreateViewStmt::create(db,sql_node.create_view,stmt);
+    }
     default: {
       LOG_INFO("Command::type %d doesn't need to create statement.", sql_node.flag);
     } break;

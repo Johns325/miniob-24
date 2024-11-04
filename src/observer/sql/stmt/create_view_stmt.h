@@ -34,7 +34,7 @@ public:
 
   StmtType type() const override { return StmtType::CREATE_VIEW; }
 
-  static RC            create(Db *db, const CreateViewSqlNode &create_table, Stmt *&stmt);
+  static RC            create(Db *db, const CreateViewSqlNode &create_view, Stmt *&stmt);
 
 private:
   std::string                  view_name_;
