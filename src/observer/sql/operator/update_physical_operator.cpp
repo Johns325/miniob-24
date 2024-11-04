@@ -55,7 +55,11 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
           value_ptrs_[i].set_null();
         }
       } else {
+        auto field = tb_meta.field(assign->attr_name.c_str());
         value_ptrs_[i] = values_from_sub_query[0];
+        if (value_ptrs_[i].attr_type() == AttrType::NULLS && !field->nullable()) {
+          invalid_ = true;
+        }
       }
     }
   }
