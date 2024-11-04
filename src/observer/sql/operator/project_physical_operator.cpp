@@ -30,9 +30,9 @@ RC ProjectPhysicalOperator::open(Trx *trx)
   RC rc {RC::SUCCESS};
   for (auto query : sub_queries_) {
     rc = query->get_physical_operator()->open(trx);
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
+    // if (!OB_SUCC(rc)) {
+    //   return rc;
+    // }
   }
   if (children_.empty()) {
     return RC::SUCCESS;
