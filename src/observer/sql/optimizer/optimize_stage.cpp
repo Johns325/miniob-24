@@ -43,13 +43,6 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
   }
 
   ASSERT(logical_operator, "logical operator is null");
-
-  rc = rewrite(logical_operator);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
-    return rc;
-  }
-
   if (logical_operator->type() == LogicalOperatorType::PROJECTION) {
     auto proj_logical_oper = static_cast<ProjectLogicalOperator*>(logical_operator.get());
     for (auto query : proj_logical_oper->sub_queries()) {
@@ -62,7 +55,13 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
       oper.release();
     }
 
-  } 
+  }
+  rc = rewrite(logical_operator);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
+    return rc;
+  }
+ 
 
   rc = optimize(logical_operator);
   if (rc != RC::SUCCESS) {
