@@ -11,7 +11,7 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by Wangyunlai on 2022/5/22.
 //
-
+#include "storage/db/db.h"
 #include "sql/stmt/stmt.h"
 #include "common/log/log.h"
 #include "sql/stmt/calc_stmt.h"
@@ -59,7 +59,8 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
       return DeleteStmt::create(db, sql_node.deletion, stmt);
     }
     case SCF_SELECT: {
-    return SelectStmt::create(db, sql_node.selection, stmt, nullptr);
+      db->col_references.clear();
+      return SelectStmt::create(db, sql_node.selection, stmt, nullptr);
     }
 
     case SCF_EXPLAIN: {

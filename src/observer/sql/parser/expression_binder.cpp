@@ -18,7 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "sql/parser/expression_binder.h"
 #include "sql/expr/expression_iterator.h"
-
+#include "storage/db/db.h"
 using namespace std;
 using namespace common;
 
@@ -204,6 +204,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
   if (outer_reference) {
     for (auto &expr : bound_expressions) {
       expressions_.emplace_back(expr.get());
+      db_->col_references[table].push_back(expr.get());
     }
   }
   return RC::SUCCESS;

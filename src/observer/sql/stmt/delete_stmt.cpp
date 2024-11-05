@@ -47,7 +47,7 @@ RC DeleteStmt::create(Db *db, const DeleteSqlNode &delete_sql, Stmt *&stmt)
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
   BinderContext ctx;
   ctx.add_table(table);
-  ExpressionBinder binder(ctx);
+  ExpressionBinder binder(db, ctx);
   vector<unique_ptr<Expression>> bound_where_expressions;
   if (delete_sql.conditions != nullptr && !delete_sql.conditions->empty()) {
     for (auto expr : *delete_sql.conditions) {

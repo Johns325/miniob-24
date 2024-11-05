@@ -51,7 +51,6 @@ struct Bound_Info {
 
 
 
-
 /**
  * @brief 表示select语句
  * @ingroup Statement
@@ -60,6 +59,7 @@ class SelectStmt : public Stmt
 {
 public:
   friend class LogicalPlanGenerator;
+  friend class ExpressionBinder;
   SelectStmt() = default;
   SelectStmt(std::vector<Table*>&& tables, std::vector<std::unique_ptr<ConjunctionExpr>>&&join_expres,std::vector<std::unique_ptr<Expression>>&& query_expressions, std::vector<std::unique_ptr<Expression>>&& condition_expressions, std::vector<std::unique_ptr<Expression>>&& group_by_expressions, std::vector<std::unique_ptr<Expression>>&& having)
   : tables_(std::move(tables)),join_expres_(std::move(join_expres)),query_expressions_(std::move(query_expressions)),condition_expressions_(std::move(condition_expressions)), group_by_(std::move(group_by_expressions)), having_(std::move(having)) {}
@@ -75,6 +75,7 @@ public:
 private:
   
 public:
+  
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
   void set_order_by_stmt(OrderByStmt* stmt) {order_by_stmt = stmt;}
@@ -99,6 +100,7 @@ private:
   bool break_pipeline_{false};
 
 };
+
 
 
 std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);

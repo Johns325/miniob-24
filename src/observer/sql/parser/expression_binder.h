@@ -18,7 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include <vector>
 
 #include "sql/expr/expression.h"
-
+#include "sql/stmt/select_stmt.h"
 class BinderContext
 {
 public:
@@ -65,7 +65,7 @@ class ExpressionBinder
 {
 public:
   friend class SelectStmt;
-  ExpressionBinder(BinderContext &context) : context_(context) {}
+  ExpressionBinder(Db*db, BinderContext &context) :db_(db), context_(context) {}
   virtual ~ExpressionBinder() = default;
 
   RC bind_expression(std::unique_ptr<Expression> &expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
@@ -90,6 +90,7 @@ private:
   RC bind_aggregate_expression(
       std::unique_ptr<Expression> &aggregate_expr, std::vector<std::unique_ptr<Expression>> &bound_expressions);
 private:
+  Db *db_;
   BinderContext &context_;
   std::list<SubQueryExpr*> sub_querys_; // 存放所有的子查詢
   bool reference_outer_query_{false};

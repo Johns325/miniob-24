@@ -82,7 +82,7 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
 
   BinderContext ctx;
   ctx.add_table(table);
-  ExpressionBinder binder(ctx);
+  ExpressionBinder binder(db, ctx);
   vector<unique_ptr<Expression>> bound_where_expressions;
   if (update.conditions != nullptr) {
     for (auto expr : *update.conditions) {

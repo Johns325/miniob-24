@@ -95,7 +95,7 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relat
     info->name_2_tables.insert({pos.first, pos.second});
   for (auto& pos : alias2table) 
     info->alias_2_tables.insert({pos.first, pos.second});
-  auto binder = new ExpressionBinder(ctx);
+  auto binder = new ExpressionBinder(db, ctx);
   // bind join condtions.
   if ((*relations[0]).on_conditions != nullptr) {
     // almost impossible.
@@ -435,6 +435,20 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
     sel_stmt->set_having(std::move(bound_having_expressions));
   }
   //TODO现在已经对于当前的查询处理完所有的bind 工作，因此需要在递归的解析子查询之前将所有的以及处理的tables,expresssions以及相应的名字映射设置到ExpressionBinder中.
+  if (upper_info) {
+    if (!upper_info->tables.empty()) {
+      info.tables.insert(info.tables.end(), upper_info->tables.begin(), upper_info->tables.end());
+    }
+    for (auto &pr : upper_info->name_2_tables) {
+      info.name_2_tables.insert({pr.first, pr.second});
+    } 
+    for (auto &pr : upper_info->alias_2_tables) {
+      info.alias_2_tables.insert({pr.first, pr.second});
+    }
+    for (auto &pr : upper_info->alias_2_expressions) {
+      info.alias_2_expressions.insert({pr.first, pr.second});
+    }
+  }
   sel_stmt->using_outer_field_ = binder->reference_outer_query_;
   for (auto query : sub_queries) {
     Stmt* select_stmt;
@@ -449,8 +463,14 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
     query->set_expressions(ss->reference_expressions_);
     query->set_select_stmt(ss);
   }
+ 
   if (!binder->expressions_.empty()) {
     sel_stmt->reference_expressions_.swap(binder->expressions_);
+  }
+  
+  if (db->col_references.find(info.tables[0]) != db->col_references.end()) {
+    auto ls = db->col_references[info.tables[0]];
+    sel_stmt->reference_expressions_.insert(sel_stmt->reference_expressions_.end(), ls.begin(), ls.end());
   }
   sel_stmt->and_flag_ = select_sql.and_flag == 1;
   sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());

@@ -56,7 +56,7 @@ public:
    * @note 数据库不是放在dbpath/name下，是直接使用dbpath目录
    */
   RC init(const char *name, const char *dbpath, const char *trx_kit_name, const char *log_handler_name);
-
+  std::unordered_map<Table*, std::list<Expression*>> col_references;
   /**
    * @brief 创建一个表
    * @param table_name 表名
@@ -118,7 +118,7 @@ private:
   unique_ptr<BufferPoolManager>  buffer_pool_manager_;  ///< 当前数据库的buffer pool管理器
   unique_ptr<LogHandler>         log_handler_;          ///< 当前数据库的日志处理器
   unique_ptr<TrxKit>             trx_kit_;              ///< 当前数据库的事务管理器
-
+  
   /// 给每个table都分配一个ID，用来记录日志。这里假设所有的DDL都不会并发操作，所以相关的数据都不上锁
   int32_t next_table_id_ = 0;
 
