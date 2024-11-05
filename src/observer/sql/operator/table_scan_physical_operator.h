@@ -57,7 +57,7 @@ private:
   Table                                   *table_ = nullptr;
   Trx                                     *trx_   = nullptr;
   ReadWriteMode                            mode_  = ReadWriteMode::READ_WRITE;
-  RecordFileScanner                        record_scanner_;
+  std::unique_ptr<RecordFileScanner>       record_scanner_;
   Record                                   current_record_;
   RowTuple                                 tuple_;
   bool                                     schema_setted_;

@@ -83,6 +83,7 @@ struct PageHeader
 class RecordPageIterator
 {
 public:
+  friend class RecordFileScanner;
   RecordPageIterator();
   ~RecordPageIterator();
 

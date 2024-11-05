@@ -20,12 +20,13 @@ using namespace std;
 
 RC TableScanPhysicalOperator::open(Trx *trx)
 {
-  RC rc = table_->get_record_scanner(record_scanner_, trx, mode_);
-  if (rc == RC::SUCCESS) {
-    if (!schema_setted_) {
-      tuple_.set_schema(table_, table_->table_meta().field_metas());
-      schema_setted_ = true;
-    }
+  if (record_scanner_.get()) {
+    record_scanner_.release();
+  }
+  record_scanner_.reset(new RecordFileScanner);
+  RC rc = table_->get_record_scanner(*record_scanner_.get(), trx, mode_);
+  if (rc == RC::SUCCESS) {  
+    tuple_.set_schema(table_, table_->table_meta().field_metas());
   }
   trx_ = trx;
   // 先對ComparisonExpr中的子查詢執行相應的查詢. table scan的多個predicate也是用AND鏈接
@@ -59,7 +60,7 @@ RC TableScanPhysicalOperator::next()
 
   bool filter_result = false;
   
-  while (OB_SUCC(rc = record_scanner_.next(current_record_))) {
+  while (OB_SUCC(rc = record_scanner_->next(current_record_))) {
     // LOG_TRACE("got a record. rid=%s", current_record_.rid().to_string().c_str());
     
     tuple_.set_record(&current_record_);
@@ -79,7 +80,7 @@ RC TableScanPhysicalOperator::next()
   return rc;
 }
 
-RC TableScanPhysicalOperator::close() { return record_scanner_.close_scan(); }
+RC TableScanPhysicalOperator::close() { return record_scanner_->close_scan(); }
 
 Tuple *TableScanPhysicalOperator::current_tuple()
 {

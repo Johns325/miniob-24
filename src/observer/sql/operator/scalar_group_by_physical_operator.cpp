@@ -29,6 +29,10 @@ RC ScalarGroupByPhysicalOperator::open(Trx *trx)
   if (always_false) {
     return RC::SUCCESS;
   }
+  if (emitted_) {
+    group_value_.reset();
+    emitted_ = false;
+  }
   ASSERT(children_.size() == 1, "group by operator only support one child, but got %d", children_.size());
 
   PhysicalOperator &child = *children_[0];

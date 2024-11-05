@@ -40,9 +40,9 @@ RC ProjectPhysicalOperator::open(Trx *trx)
 
   PhysicalOperator *child = children_[0].get();
   rc    = child->open(trx);
-  if (rc != RC::SUCCESS) {
+  if (rc != RC::SUCCESS && rc != RC::NOTFOUND) {
     LOG_WARN("failed to open child operator: %s", strrc(rc));
-    return rc;
+   return rc;
   }
   // 對所有子查詢執行open
   return RC::SUCCESS;
