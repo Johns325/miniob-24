@@ -254,6 +254,17 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
   return rc;
 }
 
+bool PhysicalPlanGenerator::detect_sub_queries_valid(LogicalOperator& logcial_oper) {
+  if (logcial_oper.type() == LogicalOperatorType::PREDICATE || logcial_oper.type() == LogicalOperatorType::TABLE_GET) {
+    return true;
+  }
+  for (auto &oper : logcial_oper.children()) {
+    if (detect_sub_queries_valid(*oper.get()))
+      return true;
+  }
+  return false;
+}
+
 RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, unique_ptr<PhysicalOperator> &oper)
 {
   vector<unique_ptr<LogicalOperator>> &child_opers = project_oper.children();
@@ -270,23 +281,26 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
       return rc;
     }
   }
-  // handle all sub queries in where
-  auto sub_queries = project_oper.sub_queries();
-  for (auto query : sub_queries) {
-    // UptrLogOper sub_query_log_oper;
-    unique_ptr<PhysicalOperator> sub_query_phy_oper;
-    auto rc = create(*query->logical_sub_query_, sub_query_phy_oper);
-    if (!OB_SUCC(rc)) {
-      return rc;
-    }
-    query->physical_sub_query_ = sub_query_phy_oper.release();
-  }
   auto project_operator = make_unique<ProjectPhysicalOperator>(std::move(project_oper.expressions()));
   if (child_phy_oper) {
     project_operator->add_child(std::move(child_phy_oper));
   }
-  if (!sub_queries.empty()) {
-    project_operator->set_sub_queries(sub_queries);
+  auto need_sub_queries_plan = detect_sub_queries_valid(project_oper);
+  if (need_sub_queries_plan) {
+    auto sub_queries = project_oper.sub_queries();
+    // handle all sub queries in where
+    for (auto query : sub_queries) {
+      // UptrLogOper sub_query_log_oper;
+      unique_ptr<PhysicalOperator> sub_query_phy_oper;
+      auto rc = create(*query->logical_sub_query_, sub_query_phy_oper);
+      if (!OB_SUCC(rc)) {
+        return rc;
+      }
+      query->physical_sub_query_ = sub_query_phy_oper.release();
+    }
+    if (!sub_queries.empty()) {
+      project_operator->set_sub_queries(sub_queries);
+    }
   }
   oper = std::move(project_operator);
 

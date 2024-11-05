@@ -21,7 +21,7 @@ See the Mulan PSL v2 for more details. */
 
 Rewriter::Rewriter()
 {
-  // rewrite_rules_.emplace_back(new ExpressionRewriter);
+  rewrite_rules_.emplace_back(new ExpressionRewriter);
   rewrite_rules_.emplace_back(new PredicateRewriteRule);
   rewrite_rules_.emplace_back(new PredicatePushdownRewriter);
 }
