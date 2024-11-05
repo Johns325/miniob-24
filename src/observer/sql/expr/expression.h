@@ -333,6 +333,7 @@ public:
   auto select_stmt() -> SelectStmt* {return select_stmt_;}
   void set_select_stmt(SelectStmt* stmt) {select_stmt_ = stmt;}
   PhysicalOperator* get_physical_operator() {return physical_sub_query_;}
+  LogicalOperator* get_logical_operator() {return logical_sub_query_;}
   // void clean_sql_node() { delete sql_node_; }
 private:
   ParsedSqlNode *sql_node_{nullptr};
