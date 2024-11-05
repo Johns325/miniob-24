@@ -132,6 +132,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         L2_DISTANCE
         INNER_PRODUCT
         COSINE_DISTANCE
+        LIMIT_T
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -188,6 +189,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <expression>          const_value_list_expr
 %type <condition_list>      where
 %type <condition_list>      having_stmt
+%type <number>                 limit_opt
 %type <condition_list>      condition_list
 %type <string>              storage_format
 // %type <relation_list>       rel_list
@@ -701,11 +703,12 @@ assignment:
   ;
 
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM relation alias_stmt rel_list where group_by having_stmt order_by
+    SELECT expression_list FROM relation alias_stmt rel_list where group_by having_stmt order_by limit_opt
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       auto &selection = $$->selection;
       // select
+      selection.limit = $11;
       if ($2 != nullptr) {
         selection.expressions.swap(*$2);
         delete $2;
@@ -872,6 +875,10 @@ relation:
       $$ = $1;
     }
     ;
+limit_opt:
+  LIMIT_T NUMBER      { $$ = $2; }         // 如果有 LIMIT，设置为 number
+  |                   { $$ = 9999; }          // 如果没有 LIMIT，设置为 0
+;
 rel_list:
   /* empty */ {
     $$ = nullptr;
@@ -1171,6 +1178,63 @@ order_list:
     node.asc = true;
     delete $1;
     $$->emplace($$->begin(), std::move(node));
+  }
+  | L2_DISTANCE LBRACE rel_attr COMMA VECTOR_DATA RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $3->relation_name;
+    node.attribute_name = $3->attribute_name;
+    node.asc = true;
+    float* vector_data = $5->data();      // 获取底层的 float* 指针
+          size_t vector_size = $5->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $5;
+    node.distance_type = 1;
+    delete $3;
+
+    $$->emplace_back(std::move(node));
+  }
+  | INNER_PRODUCT LBRACE rel_attr COMMA VECTOR_DATA RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $3->relation_name;
+    node.attribute_name = $3->attribute_name;
+    node.asc = true;
+    float* vector_data = $5->data();      // 获取底层的 float* 指针
+          size_t vector_size = $5->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $5;
+    node.distance_type = 2;
+    delete $3;
+
+    $$->emplace_back(std::move(node));
+  }
+  | COSINE_DISTANCE LBRACE rel_attr COMMA VECTOR_DATA RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $3->relation_name;
+    node.attribute_name = $3->attribute_name;
+    node.asc = true;
+    float* vector_data = $5->data();      // 获取底层的 float* 指针
+          size_t vector_size = $5->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $5;
+    node.distance_type = 3;
+    delete $3;
+
+    $$->emplace_back(std::move(node));
   }
   | rel_attr ASC {
     //std::cout << "[3]\n";

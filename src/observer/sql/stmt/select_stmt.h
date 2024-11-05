@@ -93,6 +93,8 @@ private:
   std::vector<std::unique_ptr<Expression>> having_; // having
   OrderByStmt                             *order_by_stmt{nullptr}; // order by
   bool using_outer_field_{false};
+public:
+  int limit;
 };
 
 

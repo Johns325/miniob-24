@@ -210,7 +210,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
     last_oper = &order_by_oper;
   }
 
-  auto project_oper = make_unique<ProjectLogicalOperator>(std::move(select_stmt->query_expressions()));
+  auto project_oper = make_unique<ProjectLogicalOperator>(std::move(select_stmt->query_expressions()), select_stmt->limit);
   if (*last_oper) {
     project_oper->add_child(std::move(*last_oper));
   }

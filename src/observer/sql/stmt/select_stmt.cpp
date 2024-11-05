@@ -417,5 +417,6 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   }
   sel_stmt->sub_queries_.insert(sel_stmt->sub_queries().end(), sub_queries.begin(), sub_queries.end());
   stmt = sel_stmt;
+  sel_stmt->limit = select_sql.limit;
   return RC::SUCCESS;
 }//select * from exp_table where 0 < col1-2 and col5 >'2023-11-11'

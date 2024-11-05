@@ -20,6 +20,7 @@ static constexpr const char *TABLE_META_SUFFIX       = ".table";
 static constexpr const char *TABLE_META_FILE_PATTERN = ".*\\.table$";
 static constexpr const char *TABLE_DATA_SUFFIX       = ".data";
 static constexpr const char *TABLE_INDEX_SUFFIX      = ".index";
+static constexpr const char *TABLE_IVFFLAT_SUFFIX      = ".ivfflat";
 static constexpr const char *TABLE_TEXT_SUFFIX       = ".text";
 static constexpr const char *TABLE_VECTOR_SUFFIX       = ".vector";
 
@@ -29,3 +30,4 @@ string table_data_file(const char *base_dir, const char *table_name);
 string table_index_file(const char *base_dir, const char *table_name, const char *index_name);
 string table_text_file(const char *base_dir, const char *table_name);
 string table_vector_file(const char *base_dir, const char *table_name);
+string table_ivfflat_file(const char *base_dir, const char *table_name, const char *index_name);

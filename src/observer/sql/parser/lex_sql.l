@@ -205,6 +205,7 @@ FORMAT                                  RETURN_TOKEN(FORMAT);
 L2_DISTANCE                             RETURN_TOKEN(L2_DISTANCE);
 INNER_PRODUCT                           RETURN_TOKEN(INNER_PRODUCT);
 COSINE_DISTANCE                         RETURN_TOKEN(COSINE_DISTANCE);
+LIMIT                                   RETURN_TOKEN(LIMIT_T);
 
 
 
