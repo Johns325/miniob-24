@@ -449,7 +449,7 @@ RC Table::create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt) {
   IndexMeta meta;
   auto index_name = stmt.index_name_.c_str();
   RC rc{RC::SUCCESS};
-  rc = meta.init(stmt.index_name_.c_str(), stmt.field_metas_, true);
+  rc = meta.init("VECTOR_INDEX_SCAN", stmt.field_metas_, true);
   if (rc != RC::SUCCESS) {
     LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s", name(), index_name);
     return rc;

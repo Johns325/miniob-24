@@ -16,7 +16,9 @@ private:
   // bool check_whether_cells_null(Tuple* tuple, TupleSchema* schema);
  private:
   std::vector<int> offsets_;
+public:
   std::vector<std::unique_ptr<OrderByUnit>> units_;
+private:
   std::vector<std::unique_ptr<Tuple>> tuples_;
   size_t index_in_tuples_{0};
   std::vector<Tuple *> tuples;

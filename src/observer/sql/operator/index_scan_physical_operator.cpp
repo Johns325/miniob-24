@@ -32,6 +32,10 @@ IndexScanPhysicalOperator::IndexScanPhysicalOperator(Table *table, Index *index,
   }
 }
 
+IndexScanPhysicalOperator::IndexScanPhysicalOperator(Table *table, Index *index)
+    : table_(table),
+      index_(index)
+{}
 RC IndexScanPhysicalOperator::open(Trx *trx)
 {
   if (nullptr == table_ || nullptr == index_) {

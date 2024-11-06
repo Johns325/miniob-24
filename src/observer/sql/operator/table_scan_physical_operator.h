@@ -53,8 +53,9 @@ public:
 private:
   RC filter(RowTuple &tuple, bool &result);
 
-private:
+public:
   Table                                   *table_ = nullptr;
+private:
   Trx                                     *trx_   = nullptr;
   ReadWriteMode                            mode_  = ReadWriteMode::READ_WRITE;
   std::unique_ptr<RecordFileScanner>       record_scanner_;

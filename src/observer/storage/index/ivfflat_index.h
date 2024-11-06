@@ -40,6 +40,7 @@ public:
     type_ = Index_Type::IVFFLAT;
     distance_type_ = (stmt.distance_ == 1 ? Distance_Type::L2_DISTANCE : (stmt.distance_ == 2 ? Distance_Type::COSINE_DISTANCE : Distance_Type::INNER_PRODUCT));
     inited_ = true;
+    field = stmt.field_meta()[0];
     return RC::SUCCESS;
   };
   RC open(Table *table, const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
@@ -62,11 +63,12 @@ public:
       }
   RC sync() override { return RC::UNIMPLEMENTED; };
 
-private:
+public:
   bool   inited_ {false};
   Table *table_  {nullptr};
   Distance_Type distance_type_;
   Index_Type type_;
   int    lists_  = 1;
   int    probes_ = 1;
+  const FieldMeta* field;
 };

@@ -49,6 +49,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/optimizer/physical_plan_generator.h"
 #include "sql/operator/create_select_logical_operator.h"
 #include "sql/operator/create_select_physical_operator.h"
+#include "storage/index/ivfflat_index.h"
 
 using namespace std;
 
@@ -419,9 +420,20 @@ RC PhysicalPlanGenerator::create_plan(ExplainLogicalOperator &explain_oper, uniq
       LOG_WARN("failed to create child physical operator. rc=%s", strrc(rc));
       return rc;
     }
-
     explain_physical_oper->add_child(std::move(child_physical_oper));
   }
+  if(explain_physical_oper->children()[0]->children()[0]->type() == PhysicalOperatorType::ORDER_BY) {
+      auto order_ptr = dynamic_cast<OrderByPhysicalOperator*>(explain_physical_oper->children()[0]->children()[0].get());
+      if(order_ptr->units_.size() == 1 && order_ptr->units_[0]->distance_type_ != 0)  {
+       const FieldMeta *field = order_ptr->units_[0]->field_;
+       Table *table = dynamic_cast<TableScanPhysicalOperator*>(order_ptr->children()[0].get())->table_;
+               
+        for(auto ivff:table->vector_index_) {
+          if(ivff->field->name() == field->name() && (int)ivff->distance_type_ == order_ptr->units_[0]->distance_type_)
+          order_ptr->children()[0] = std::make_unique<IndexScanPhysicalOperator>(table, ivff);
+        } 
+      }
+    }
 
   oper = std::move(explain_physical_oper);
   return rc;

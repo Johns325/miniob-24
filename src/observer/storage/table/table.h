@@ -139,5 +139,6 @@ private:
   DiskBufferPool    *text_buffer_pool_ = nullptr;   
   DiskBufferPool    *vector_buffer_pool_ = nullptr; 
   vector<Index *>    indexes_;
+public:
   vector<IvfflatIndex*> vector_index_;
 };
