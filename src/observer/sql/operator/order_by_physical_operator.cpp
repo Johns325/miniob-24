@@ -51,6 +51,7 @@ RC OrderByPhysicalOperator::open(Trx* trx) {
   }
 
   // currently order by only supports sorting JoinedTuple and RowTuple
+  
   auto comparator = [this] (const std::unique_ptr<Tuple>& t1, const std::unique_ptr<Tuple>& t2) -> bool {
     for(size_t k = 0; k < this->offsets_.size(); ++k) {
       int index = this->offsets_[k];
@@ -85,6 +86,25 @@ RC OrderByPhysicalOperator::open(Trx* trx) {
           return unit->asc_ ? true : false;
         }
         break;
+      case AttrType::VECTORS: {
+        Value a,b;
+        a.set_type(AttrType::FLOATS);
+        b.set_type(AttrType::FLOATS);
+        if(unit->distance_type_ == 1){
+          Value::l2_distance(unit->base_vector_, v1, a);
+          Value::l2_distance(unit->base_vector_, v2, b);
+        } else if(unit->distance_type_ == 2) {
+          Value::inner_product(unit->base_vector_, v1, a);
+          Value::inner_product(unit->base_vector_, v2, b);
+        } else if(unit->distance_type_ == 3) {
+          Value::cosine_distance(unit->base_vector_, v1, a);
+          Value::cosine_distance(unit->base_vector_, v2, b);
+        }
+        float epsilon = 1e-6;
+        if(a.get_float() - b.get_float() < epsilon) result = -1;
+        else if(a.get_float() - b.get_float() > epsilon) result = 1;
+        else result = 0; 
+      } break;
       default:
         // UNREACHABLE.
         assert(false);

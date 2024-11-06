@@ -281,7 +281,19 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
       return rc;
     }
   }
-  auto project_operator = make_unique<ProjectPhysicalOperator>(std::move(project_oper.expressions()));
+  // auto project_operator = make_unique<ProjectPhysicalOperator>(std::move(project_oper.expressions()));
+  // // handle all sub queries in where
+  // auto sub_queries = project_oper.sub_queries();
+  // for (auto query : sub_queries) {
+  //   // UptrLogOper sub_query_log_oper;
+  //   unique_ptr<PhysicalOperator> sub_query_phy_oper;
+  //   auto rc = create(*query->logical_sub_query_, sub_query_phy_oper);
+  //   if (!OB_SUCC(rc)) {
+  //     return rc;
+  //   }
+  //   query->physical_sub_query_ = sub_query_phy_oper.release();
+  // }
+  auto project_operator = make_unique<ProjectPhysicalOperator>(std::move(project_oper.expressions()), project_oper.limit_);
   if (child_phy_oper) {
     project_operator->add_child(std::move(child_phy_oper));
   }

@@ -41,6 +41,9 @@ Value::Value(const Value &other)
     case AttrType::CHARS: {
       set_string_from_other(other);
     } break;
+    case AttrType::TEXTS: {
+      set_text_from_other(other);
+    }
     case AttrType::VECTORS: {
        if (other.value_.vector_value_ != nullptr) {
         this->own_data_ = true;  // 我们拥有新分配的内存
@@ -81,6 +84,9 @@ Value &Value::operator=(const Value &other)
     case AttrType::CHARS: {
       set_string_from_other(other);
     } break;
+    case AttrType::TEXTS :{
+      set_text_from_other(other);
+    }
     case AttrType::VECTORS: {
       if (other.value_.vector_value_ != nullptr) {
         this->own_data_ = true;  // 我们拥有新分配的内存
@@ -123,6 +129,11 @@ void Value::reset()
         value_.pointer_value_ = nullptr;
       }
       break;
+    case AttrType::TEXTS:
+      if (own_data_ && value_.pointer_value_ != nullptr) {
+        delete[] value_.pointer_value_;
+        value_.pointer_value_ = nullptr;
+      }break;
     case AttrType::VECTORS:
       if (own_data_ && value_.vector_value_ != nullptr) {
         delete[] value_.vector_value_;
@@ -142,6 +153,9 @@ void Value::set_data(char *data, int length)
   switch (attr_type_) {
     case AttrType::CHARS: {
       set_string(data, length);
+    } break;
+    case AttrType::TEXTS: {
+      set_text(data, length);
     } break;
     case AttrType::INTS: {
       value_.int_value_ = *(int *)data;
@@ -250,6 +264,9 @@ void Value::set_value(const Value &value)
     case AttrType::CHARS: {
       set_string(value.get_string().c_str());
     } break;
+    case AttrType::TEXTS: {
+      set_string(value.get_string().c_str());
+    }break;
     case AttrType::BOOLEANS: {
       set_boolean(value.get_boolean());
     } break;
@@ -280,6 +297,9 @@ const char *Value::data() const
     } break;
     case AttrType::VECTORS: {
       return (char*)value_.vector_value_;
+    } break;
+    case AttrType::TEXTS: {
+      return value_.pointer_value_;
     } break;
     default: {
       return (const char *)&value_;
@@ -441,4 +461,47 @@ float* Value::get_vector() const {
 void Value::init_int(int val) {
   this->attr_type_ = AttrType::INTS;
   this->value_.int_value_ = val;
+}
+
+void Value::set_text_from_other(const Value &other)
+{
+  ASSERT(attr_type_ == AttrType::TEXTS, "attr type is not CHARS");
+  own_data_ = true;
+  this->length_ = other.length();
+  if (own_data_ && other.value_.pointer_value_ != nullptr && length_ != 0) {
+    this->value_.pointer_value_ = new char[this->length_ + 1];
+    memcpy(this->value_.pointer_value_, other.value_.pointer_value_, this->length_);
+    this->value_.pointer_value_[this->length_] = '\0';
+  }
+}
+
+void Value::set_vector_from_other(const Value &other)
+{
+  ASSERT(attr_type_ == AttrType::VECTORS, "attr type is not vector");
+  if (own_data_ && other.value_.vector_value_ != nullptr && length_ != 0) {
+    this->value_.vector_value_ = new float[this->length_];
+    memcpy(this->value_.vector_value_, other.value_.vector_value_, this->length_);
+    this->length_ = 16;
+  }
+}
+
+void Value::set_text(const char *s, int len /*= 0*/)
+{
+  reset();
+  attr_type_ = AttrType::TEXTS;
+  if (s == nullptr) {
+    value_.pointer_value_ = nullptr;
+    length_               = 0;
+  } else {
+    own_data_ = true;
+    if (len > 0) {
+      len = strnlen(s, len);
+    } else {
+      len = strlen(s);
+    }
+    value_.pointer_value_ = new char[len + 1];
+    length_               = len;
+    memcpy(value_.pointer_value_, s, len);
+    value_.pointer_value_[len] = '\0';
+  }
 }

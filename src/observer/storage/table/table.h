@@ -60,6 +60,10 @@ public:
    * @param meta_file 保存表元数据的文件完整路径
    * @param base_dir 表所在的文件夹，表记录数据文件、索引数据文件存放位置
    */
+  RC write_text(int64_t &offset, int64_t length, const char *data);
+  RC read_text(int64_t offset, int64_t length, char *data) const;
+  RC write_vector(int64_t &offset, int64_t length, const char *data);
+  RC read_vector(int64_t offset, int64_t length, char *data) const;
   RC open(Db *db, const char *meta_file, const char *base_dir);
 
   /**
@@ -118,6 +122,8 @@ private:
 
 private:
   RC init_record_handler(const char *base_dir);
+  RC init_text_handler(const char *base_dir);
+  RC init_vector_handler(const char *base_dir);
   bool record_contains_null(const char* record, const IndexMeta& meta);
 public:
   Index *find_index(const char *index_name) const;
@@ -129,5 +135,7 @@ private:
   TableMeta          table_meta_;
   DiskBufferPool    *data_buffer_pool_ = nullptr;  /// 数据文件关联的buffer pool
   RecordFileHandler *record_handler_   = nullptr;  /// 记录操作
+  DiskBufferPool    *text_buffer_pool_ = nullptr;   
+  DiskBufferPool    *vector_buffer_pool_ = nullptr; 
   vector<Index *>    indexes_;
 };

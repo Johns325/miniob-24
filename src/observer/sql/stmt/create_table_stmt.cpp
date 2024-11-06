@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/types.h"
 #include "sql/stmt/create_table_stmt.h"
 #include "event/sql_debug.h"
+#include "common/global_context.h"
 
 RC CreateTableStmt::create(Db *db, const CreateTableSqlNode &create_table, Stmt *&stmt)
 {
@@ -30,6 +31,14 @@ RC CreateTableStmt::create(Db *db, const CreateTableSqlNode &create_table, Stmt 
   }
   stmt = new CreateTableStmt(create_table.relation_name, create_table.attr_infos, storage_format);
   sql_debug("create table statement: table name %s", create_table.relation_name.c_str());
+  for(auto attr:create_table.attr_infos) {
+    if(attr.type == AttrType::VECTORS) {
+      if(attr.length > 16000 * 4)   return RC::INVALID_ARGUMENT;
+      auto s = create_table.relation_name;
+      s += attr.name;
+      vector_map()[s] = attr.length;
+    }
+  }
   return RC::SUCCESS;
 }
 

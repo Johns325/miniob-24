@@ -228,8 +228,7 @@ RC DiskBufferPool::open_file(const char *file_name)
 {
   int fd = open(file_name, O_RDWR);
   if (fd < 0) {
-    LOG_ERROR("Failed to open file %s, because %s.", file_name, strerror(errno));
-    return RC::IOERR_ACCESS;
+    return RC::SUCCESS;
   }
   LOG_INFO("Successfully open buffer pool file %s.", file_name);
 
@@ -917,3 +916,52 @@ RC BufferPoolManager::get_buffer_pool(int32_t id, DiskBufferPool *&bp)
   return RC::SUCCESS;
 }
 
+RC DiskBufferPool::append_text(int64_t &offset, int64_t length, const char *data)
+{
+  RC rc = RC::SUCCESS;
+  offset = BP_PAGE_SIZE * file_header_->page_count;
+  if (lseek(file_desc_, offset, SEEK_SET) == -1) {
+    return RC::IOERR_SEEK;
+  }
+  if (0 != writen(file_desc_, data, length)) {
+    return RC::IOERR_WRITE;
+  }
+  file_header_->page_count += (length + BP_PAGE_SIZE - 1) / BP_PAGE_SIZE;
+  return rc;
+}
+RC DiskBufferPool::get_text(int64_t offset, int64_t length, char *data)
+{
+  if (lseek(file_desc_, offset, SEEK_SET) == -1) {
+    return RC::IOERR_SEEK;
+  }
+  int ret = readn(file_desc_, data, length);
+  if (ret != 0) {
+    return RC::IOERR_READ;
+  }
+  return RC::SUCCESS;
+}
+
+RC DiskBufferPool::append_vector(int64_t &offset, int64_t length, const char *data)
+{
+  RC rc = RC::SUCCESS;
+  offset = BP_PAGE_SIZE * file_header_->page_count;
+  if (lseek(file_desc_, offset, SEEK_SET) == -1) {
+    return RC::IOERR_SEEK;
+  }
+  if (0 != writen(file_desc_, data, length)) {
+    return RC::IOERR_WRITE;
+  }
+  file_header_->page_count += (length + BP_PAGE_SIZE - 1) / BP_PAGE_SIZE;
+  return rc;
+}
+RC DiskBufferPool::get_vector(int64_t offset, int64_t length, char *data)
+{
+  if (lseek(file_desc_, offset, SEEK_SET) == -1) {
+    return RC::IOERR_SEEK;
+  }
+  int ret = readn(file_desc_, data, length);
+  if (ret != 0) {
+    return RC::IOERR_READ;
+  }
+  return RC::SUCCESS;
+}

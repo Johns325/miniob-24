@@ -83,6 +83,10 @@ struct ConditionSqlNode
   Value          right_value;    ///< right-hand side value if right_is_attr = FALSE
 };
 
+struct LimitSqlNode {
+  int limit;
+};
+
 // infomation about table to select(name & alias)
 struct rel_info {
   std::string relation_name;
@@ -126,6 +130,8 @@ struct order_by {
 struct OrderBySqlNode {
   std::string table_name;
   std::string attribute_name;
+  Value base_vector;
+  int distance_type; //默认add，当出现vector search变真正距离
   bool asc; // ascending order or not
 };
 
@@ -150,6 +156,7 @@ struct SelectSqlNode
   std::vector<OrderBySqlNode>              *order_by{nullptr};
   std::vector<Expression*>* having{nullptr};
   int and_flag{1};
+  int limit = 0;
 };
 
 /**

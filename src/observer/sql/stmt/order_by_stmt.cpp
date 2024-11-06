@@ -26,7 +26,7 @@ RC OrderByStmt::create(std::unordered_map<string,Table*>& name_to_tables , std::
     if (meta == nullptr) {
       return RC::SCHEMA_FIELD_NOT_EXIST;
     }
-    auto  unit = std::make_unique<OrderByUnit>(table, meta, order_by.asc);
+    auto  unit = std::make_unique<OrderByUnit>(table, meta, order_by.asc, order_by.distance_type, std::move(order_by.base_vector));
     units.emplace_back(std::move(unit));
   }
   stmt =  new OrderByStmt(std::move(units));

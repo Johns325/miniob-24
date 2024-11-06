@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/db/db.h"
 #include "storage/table/table.h"
 #include "common/type/attr_type.h"
+#include "common/global_context.h"
 
 InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount)
     : table_(table), values_(values), value_amount_(value_amount)
@@ -53,10 +54,20 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       // field is not null while insert value is null.
       return RC::INSERT_NULL_VALUE;
     }
+    if(field->type() == AttrType::TEXTS) {
+      if (65535 < values[i].length()) {
+        LOG_WARN("Text length:%d, over max_length 65535", values[i].length());
+        return RC::INVALID_ARGUMENT;
+        }
+      }
     if(field->type() == AttrType::VECTORS) {
-        if(inserts.values[i].attr_type() != AttrType::VECTORS ||
-          inserts.values[i].length() != field->len())
+        if(inserts.values[i].attr_type() != AttrType::VECTORS) {
             return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+
+        auto s = table_name + string(field->name());
+        auto it = vector_map().find(s);
+        if(it == vector_map().end() || it->second != inserts.values[i].length())  return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       }
     if (field->type() == AttrType::DATES) {
       if (field->nullable()) {
@@ -72,6 +83,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       if (RC::SUCCESS != rc) {
         return rc;
       }
+      
       values[i].set_date(date_val);
     }
   }

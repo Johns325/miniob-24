@@ -99,6 +99,8 @@ private:
   bool using_outer_field_{false};
   bool break_pipeline_{false};
 
+public:
+  int limit;
 };
 
 

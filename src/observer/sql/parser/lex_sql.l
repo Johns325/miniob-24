@@ -196,6 +196,7 @@ VECTOR                                  RETURN_TOKEN(VECTOR_T);
 UNIQUE                                  RETURN_TOKEN(UNIQUE);
 LOAD                                    RETURN_TOKEN(LOAD);
 DATA                                    RETURN_TOKEN(DATA);
+TEXT                                    RETURN_TOKEN(TEXT_T);
 INFILE                                  RETURN_TOKEN(INFILE);
 EXPLAIN                                 RETURN_TOKEN(EXPLAIN);
 GROUP                                   RETURN_TOKEN(GROUP);
@@ -205,6 +206,7 @@ FORMAT                                  RETURN_TOKEN(FORMAT);
 L2_DISTANCE                             RETURN_TOKEN(L2_DISTANCE);
 INNER_PRODUCT                           RETURN_TOKEN(INNER_PRODUCT);
 COSINE_DISTANCE                         RETURN_TOKEN(COSINE_DISTANCE);
+LIMIT                                   RETURN_TOKEN(LIMIT_T);
 
 
 

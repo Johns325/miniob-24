@@ -58,9 +58,13 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
       return RC::INSERT_NULL_VALUE;
     }
     if(field->type() == AttrType::VECTORS) {
-      if(v.attr_type() != AttrType::VECTORS || v.length() != field->len())
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-    }
+        if(v.attr_type() != AttrType::VECTORS)
+          //inserts.values[i].length() != field->offset() - 1)
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        auto s = update.relation_name.c_str() + string(field->name());
+        auto it = vector_map().find(s);
+        if(it == vector_map().end() || it->second != v.length())  return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
     if (field->type() == AttrType::DATES) {
       if (field->nullable()) {
         if (v.attr_type() == AttrType::NULLS)
@@ -76,6 +80,12 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
         return rc;
       }
       v.set_date(date_val);
+    }
+    if(field->type() == AttrType::TEXTS) {
+      if(v.attr_type() != AttrType::CHARS) return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      if (65535 < v.length()) {
+        return RC::INVALID_ARGUMENT;
+      }
     }
   }
   

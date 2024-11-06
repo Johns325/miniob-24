@@ -86,7 +86,11 @@ RC  UpdatePhysicalOperator::open(Trx *trx) {
         real_value.set_null();
       } else if (value_ptrs_[i].attr_type() == field->type()) {
         real_value = value_ptrs_[i];
-      } else {
+      } else if(field->type() == AttrType::TEXTS) {
+        real_value.set_type(AttrType::TEXTS);
+        real_value.set_text_from_other(value_ptrs_[i]);
+      }
+      else {
         Value::cast_to(value_ptrs_[i], field->type(), real_value);
       }
       rc = table_->set_value_to_record(record.data(), real_value, field);
