@@ -1363,6 +1363,63 @@ order_list:
 
     $$->emplace_back(std::move(node));
   }
+  | L2_DISTANCE LBRACE VECTOR_DATA COMMA rel_attr RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $5->relation_name;
+    node.attribute_name = $5->attribute_name;
+    node.asc = true;
+    float* vector_data = $3->data();      // 获取底层的 float* 指针
+          size_t vector_size = $3->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $3;
+    node.distance_type = 1;
+    delete $5;
+
+    $$->emplace_back(std::move(node));
+  }
+  | INNER_PRODUCT LBRACE VECTOR_DATA COMMA rel_attr RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $5->relation_name;
+    node.attribute_name = $5->attribute_name;
+    node.asc = true;
+    float* vector_data = $3->data();      // 获取底层的 float* 指针
+          size_t vector_size = $3->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $3;
+    node.distance_type = 2;
+    delete $5;
+
+    $$->emplace_back(std::move(node));
+  }
+  | COSINE_DISTANCE LBRACE VECTOR_DATA COMMA rel_attr RBRACE {
+    $$ = new vector<OrderBySqlNode>();
+    OrderBySqlNode node; 
+    node.table_name = $5->relation_name;
+    node.attribute_name = $5->attribute_name;
+    node.asc = true;
+    float* vector_data = $3->data();      // 获取底层的 float* 指针
+          size_t vector_size = $3->size();      // 获取元素个数
+
+          // 将 float* 数组指针和大小传递给 set_vector
+          node.base_vector.set_vector(vector_data, vector_size * sizeof(float));
+
+          // 释放 std::vector<float> 指针的内存
+          delete $3;
+    node.distance_type = 3;
+    delete $5;
+
+    $$->emplace_back(std::move(node));
+  }
   | rel_attr ASC {
     //std::cout << "[3]\n";
     $$ = new vector<OrderBySqlNode>();
