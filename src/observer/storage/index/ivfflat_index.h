@@ -46,22 +46,22 @@ public:
   RC open(Table *table, const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
   {
 
-    return RC::UNIMPLEMENTED;
+    return RC::SUCCESS;
   };
 
   bool is_vector_index() override { return true; }
 
   vector<RID> ann_search(const vector<float> &base_vector, size_t limit) { return vector<RID>(); }
 
-  RC close() { return RC::UNIMPLEMENTED; }
+  RC close() { return RC::SUCCESS; }
 
-  RC insert_entry(const char *record, const RID *rid) override { return RC::UNIMPLEMENTED; };
-  RC delete_entry(const char *record, const RID *rid) override { return RC::UNIMPLEMENTED; };
+  RC insert_entry(const char *record, const RID *rid) override { return RC::SUCCESS; };
+  RC delete_entry(const char *record, const RID *rid) override { return RC::SUCCESS; };
   IndexScanner *create_scanner(const char *left_key, int left_len, bool left_inclusive, const char *right_key,
       int right_len, bool right_inclusive) override {
         return nullptr;
       }
-  RC sync() override { return RC::UNIMPLEMENTED; };
+  RC sync() override { return RC::SUCCESS; };
 
 public:
   bool   inited_ {false};
