@@ -37,14 +37,14 @@ RC TableScanPhysicalOperator::open(Trx *trx)
     auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
       auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->left().get());
-      if (!sub_query->break_pipeline())
+      if (sub_query->break_pipeline())
         rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(true), true);
       if (!OB_SUCC(rc)) 
       return rc;
     }
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
       auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->right().get());
-      if (!sub_query->break_pipeline())
+      if (sub_query->break_pipeline())
         rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), false);
       if (!OB_SUCC(rc))
         return rc;
@@ -114,7 +114,9 @@ RC TableScanPhysicalOperator::filter(RowTuple &tuple, bool &result)
       if (sub_expr->break_pipeline()) {
         sub_expr->hand_expressions(&tuple);
       }
-      cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(false), false, &tuple);
+      rc = cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(false), false, &tuple);
+      if (!OB_SUCC(rc))
+        return rc;
     }
     rc = expr->get_value(tuple, value);    
     if (rc != RC::SUCCESS) {

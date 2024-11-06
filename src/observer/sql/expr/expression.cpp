@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/tuple.h"
 #include "sql/expr/arithmetic_operator.hpp"
 #include "sql/operator/physical_operator.h"
+#include "event/sql_debug.h"
 using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
@@ -356,6 +357,24 @@ RC ComparisonExpr::handle_sub_query(PhysicalOperator*query_phy_oper , std::vecto
     values.emplace_back(std::move(v));
   }
   // query_phy_oper->close();
+
+  // if (values.empty()) {
+  //   sql_debug("sub query return zero tuples");
+  //   auto alias = std::string(schema.cell_at(0).alias()); 
+  //   auto pos = alias.find("(");
+  //   if (pos != std::string::npos) {
+  //     auto name = alias.substr(0, pos);
+  //     Value v;
+  //     if (name == "max" || name == "min" || name == "avg" || name == "sum") {
+  //       v.set_null();
+  //       values.push_back(v);
+  //     } else if (name == "count" ) {
+  //       v.set_int(0);
+  //       values.push_back(v);
+  //     }
+
+  //   } 
+  // }
   set_emited(left);
   return RC::SUCCESS;
 }
@@ -379,6 +398,22 @@ RC ComparisonExpr::handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , s
     query_phy_oper->current_tuple()->cell_at(0, v);
     values.emplace_back(std::move(v));
   }
+  // if (values.empty()) {
+  //   auto alias = std::string(schema.cell_at(0).alias()); 
+  //   auto pos = alias.find("(");
+  //   if (pos != std::string::npos) {
+  //     auto name = alias.substr(0, pos);
+  //     Value v;
+  //     if (name == "max" || name == "min" || name == "avg" || name == "sum") {
+  //       v.set_null();
+  //       values.push_back(v);
+  //     } else if (name == "count" ) {
+  //       v.set_int(0);
+  //       values.push_back(v);
+  //     }
+
+  //   } 
+  // }
   return RC::SUCCESS;
 }
 
