@@ -28,13 +28,13 @@ public:
   IndexScanPhysicalOperator(){}
   IndexScanPhysicalOperator(Table *table, Index *index, ReadWriteMode mode, const Value *left_value,
       bool left_inclusive, const Value *right_value, bool right_inclusive);
-  IndexScanPhysicalOperator(Table *table, Index *index);
+  IndexScanPhysicalOperator(Table *table, Index *index, PhysicalOperatorType type);
   virtual ~IndexScanPhysicalOperator() = default;
 
-  PhysicalOperatorType type() const override { return PhysicalOperatorType::INDEX_SCAN; }
+  PhysicalOperatorType type() const override { return type_; }
 
   std::string param() const override;
-
+  void set_type(PhysicalOperatorType type) {type_ = type;}
   RC open(Trx *trx) override;
   RC next() override;
   RC close() override;
@@ -62,6 +62,6 @@ private:
   Value right_value_;
   bool  left_inclusive_  = false;
   bool  right_inclusive_ = false;
-
+  PhysicalOperatorType type_ = PhysicalOperatorType::INDEX_SCAN;
   std::vector<std::unique_ptr<Expression>> predicates_;
 };

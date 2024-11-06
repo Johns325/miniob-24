@@ -430,7 +430,7 @@ RC PhysicalPlanGenerator::create_plan(ExplainLogicalOperator &explain_oper, uniq
                
         for(auto ivff:table->vector_index_) {
           if(ivff->field->name() == field->name() && (int)ivff->distance_type_ == order_ptr->units_[0]->distance_type_)
-          order_ptr->children()[0] = std::make_unique<IndexScanPhysicalOperator>(table, ivff);
+          order_ptr->children()[0] = std::make_unique<IndexScanPhysicalOperator>(table, ivff, PhysicalOperatorType::VECTOR_INDEX_SCAN);
         } 
       }
     }

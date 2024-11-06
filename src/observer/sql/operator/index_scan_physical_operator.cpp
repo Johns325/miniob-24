@@ -32,9 +32,10 @@ IndexScanPhysicalOperator::IndexScanPhysicalOperator(Table *table, Index *index,
   }
 }
 
-IndexScanPhysicalOperator::IndexScanPhysicalOperator(Table *table, Index *index)
+IndexScanPhysicalOperator::IndexScanPhysicalOperator(Table *table, Index *index,PhysicalOperatorType type)
     : table_(table),
-      index_(index)
+      index_(index),
+      type_(type)
 {}
 RC IndexScanPhysicalOperator::open(Trx *trx)
 {
