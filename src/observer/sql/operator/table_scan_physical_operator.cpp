@@ -106,17 +106,19 @@ RC TableScanPhysicalOperator::filter(RowTuple &tuple, bool &result)
       auto sub_expr = static_cast<SubQueryExpr*>(cmp_expr->left().get());
       if (sub_expr->break_pipeline()) {
         sub_expr->hand_expressions(&tuple);
+        rc = cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(true), true, &tuple);
+        if (!OB_SUCC(rc))
+            return rc;
       }
-      cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(true), true, &tuple);
     }
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
       auto sub_expr = static_cast<SubQueryExpr*>(cmp_expr->right().get());
       if (sub_expr->break_pipeline()) {
         sub_expr->hand_expressions(&tuple);
+        rc = cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(false), false, &tuple);
+        if (!OB_SUCC(rc))
+          return rc;
       }
-      rc = cmp_expr->handle_sub_query_from_scrath(sub_expr, trx_, cmp_expr->value_list(false), false, &tuple);
-      if (!OB_SUCC(rc))
-        return rc;
     }
     rc = expr->get_value(tuple, value);    
     if (rc != RC::SUCCESS) {
