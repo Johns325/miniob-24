@@ -45,7 +45,7 @@ RC TableScanPhysicalOperator::open(Trx *trx)
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
       auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->right().get());
       if (!sub_query->break_pipeline())
-        rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), true);
+        rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), false);
       if (!OB_SUCC(rc))
         return rc;
     }

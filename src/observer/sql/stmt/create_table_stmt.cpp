@@ -30,7 +30,7 @@ RC CreateTableStmt::create(Db *db, const CreateTableSqlNode &create_table, Stmt 
     return RC::INVALID_ARGUMENT;
   }
   stmt = new CreateTableStmt(create_table.relation_name, create_table.attr_infos, storage_format);
-  sql_debug("create table statement: table name %s", create_table.relation_name.c_str());
+  // sql_debug("create table statement: table name %s", create_table.relation_name.c_str());
   for(auto attr:create_table.attr_infos) {
     if(attr.type == AttrType::VECTORS) {
       if(attr.length > 16000 * 4)   return RC::INVALID_ARGUMENT;

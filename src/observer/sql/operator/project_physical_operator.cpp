@@ -51,6 +51,8 @@ RC ProjectPhysicalOperator::open(Trx *trx)
 RC ProjectPhysicalOperator::next()
 {
   if (limit_ < 0) {
+    if (children_.empty())
+      return RC::RECORD_EOF;
     return children_[0]->next();
   }
   if (children_.empty() || limit_-- == 0) {
