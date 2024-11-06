@@ -37,14 +37,14 @@ RC TableScanPhysicalOperator::open(Trx *trx)
     auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
       auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->left().get());
-      if (sub_query->break_pipeline())
+      if (!sub_query->break_pipeline())
         rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(true), true);
       if (!OB_SUCC(rc)) 
       return rc;
     }
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
       auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->right().get());
-      if (sub_query->break_pipeline())
+      if (!sub_query->break_pipeline())
         rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), false);
       if (!OB_SUCC(rc))
         return rc;

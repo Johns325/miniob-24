@@ -57,7 +57,7 @@ void PredicatePhysicalOperator::hand_all_sub_queries_every_time(Tuple *t) {
         if (cmp_expr->left()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
           cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->left().get()), trx_, cmp_expr->value_list(true),  true, t);
         }
-        if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
+        if (cmp_expr->right()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
           cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->right().get()),trx_, cmp_expr->value_list(false),  false, t);
         }
       }
