@@ -14,7 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <limits.h>
 #include <string.h>
-
+#include "sql/stmt/create_vector_index_stmt.h"
 #include "common/defs.h"
 #include "common/lang/string.h"
 #include "common/lang/span.h"
@@ -30,7 +30,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/record/record_manager.h"
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
-
+#include "storage/index/ivfflat_index.h"
 Table::~Table()
 {
   if (record_handler_ != nullptr) {
@@ -53,6 +53,10 @@ Table::~Table()
     delete index;
   }
   indexes_.clear();
+  for (auto iter = vector_index_.begin(); iter != vector_index_.end(); ++iter) {
+    delete *iter;
+  }
+  vector_index_.clear();
 
   LOG_INFO("Table has been closed: %s", name());
 }
@@ -439,6 +443,49 @@ RC Table::get_chunk_scanner(ChunkFileScanner &scanner, Trx *trx, ReadWriteMode m
     LOG_ERROR("failed to open scanner. rc=%s", strrc(rc));
   }
   return rc;
+}
+
+RC Table::create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt) {
+  IndexMeta meta;
+  auto index_name = stmt.index_name_.c_str();
+  RC rc{RC::SUCCESS};
+  rc = meta.init(stmt.index_name_.c_str(), stmt.field_metas_, true);
+  if (rc != RC::SUCCESS) {
+    LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s", name(), index_name);
+    return rc;
+  }
+  auto index = new IvfflatIndex();
+  rc = index->create(this, meta, stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s", name(), index_name);
+    return rc;
+  }
+  vector_index_.push_back(index);
+  // 遍历当前的所有数据，插入这个索引
+  RecordFileScanner scanner;
+  rc = get_record_scanner(scanner, trx, ReadWriteMode::READ_ONLY);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
+    return rc;
+  }
+
+  Record record;
+  while (OB_SUCC(rc = scanner.next(record))) {
+  rc = index->insert_entry(record.data(), &record.rid());
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",name(), index_name, strrc(rc));
+      return rc;
+    }
+  }
+  if (RC::RECORD_EOF == rc) {
+    rc = RC::SUCCESS;
+  } else {
+    LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
+    return rc;
+  }
+  scanner.close_scan();
+  LOG_INFO("inserted all records into new index. table=%s, index=%s", name(), index_name);
+  return RC::SUCCESS;
 }
 
 RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, const char *index_name, bool unique)

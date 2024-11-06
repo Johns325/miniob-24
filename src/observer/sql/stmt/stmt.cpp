@@ -11,6 +11,7 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by Wangyunlai on 2022/5/22.
 //
+#include "sql/stmt/create_vector_index_stmt.h"
 #include "storage/db/db.h"
 #include "sql/stmt/stmt.h"
 #include "common/log/log.h"
@@ -85,6 +86,9 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 
     case SCF_HELP: {
       return HelpStmt::create(stmt);
+    }
+    case SCF_CREATE_VECTOR_INDEX :{
+      return CreateVectorIndexStmt::create(db, sql_node.create_vector_index, stmt);
     }
     case SCF_CREATE_TABLE_SELECT: {
       return CreateTableSelectStmt::create(db, sql_node.create_table_select, stmt);

@@ -17,7 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <string>
 #include <vector>
 #include <memory>
-
+#include <unordered_map>
 #include "common/value.h"
 
 class Expression;
@@ -156,7 +156,7 @@ struct SelectSqlNode
   std::vector<OrderBySqlNode>              *order_by{nullptr};
   std::vector<Expression*>* having{nullptr};
   int and_flag{1};
-  int limit = 0;
+  int limit {0};
 };
 
 /**
@@ -270,6 +270,21 @@ struct CreateIndexSqlNode
   bool unique;
 };
 
+
+/**
+ * @brief 描述一个create vector index语句
+ * @ingroup SQLParser
+ * @details 创建索引时，需要指定索引名，表名，字段名。
+ * 正常的SQL语句中，一个索引可能包含了多个字段，这里仅支持一个字段。
+ */
+struct CreateVectorIndexSqlNode
+{
+  std::string index_name;      ///< Index name
+  std::string relation_name;   ///< Relation name
+  std::string attribute_name;  ///< Attribute name
+  std::unordered_map<string, string>* args;
+};
+
 /**
  * @brief 描述一个drop index语句
  * @ingroup SQLParser
@@ -355,6 +370,7 @@ enum SqlCommandFlag
   SCF_CREATE_VIEW, // i.e.: create view v as select * from t2;
   SCF_DROP_TABLE,
   SCF_CREATE_INDEX,
+  SCF_CREATE_VECTOR_INDEX,
   SCF_DROP_INDEX,
   SCF_SYNC,
   SCF_SHOW_TABLES,
@@ -388,6 +404,7 @@ public:
   CreateViewSqlNode create_view;
   DropTableSqlNode    drop_table;
   CreateIndexSqlNode  create_index;
+  CreateVectorIndexSqlNode create_vector_index;
   DropIndexSqlNode    drop_index;
   DescTableSqlNode    desc_table;
   LoadDataSqlNode     load_data;

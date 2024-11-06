@@ -32,6 +32,20 @@ SelectStmt::~SelectStmt()
   }
 }
 
+bool SelectStmt::convert_to_vector_index(Index* index) {
+  if (order_by_stmt == nullptr)
+    return false;
+  auto &spec = order_by_stmt->units();
+  if (spec.size() != 1)
+    return false;
+  if (spec[0]->field_->type() != AttrType::VECTORS || -1 == this->limit)
+    return false;
+  auto vec_index = tables_[0]->find_index(spec[0]->field_->name());
+  if (vec_index)
+    index = vec_index;
+  return vec_index != nullptr; 
+}
+
 // bind_from 需要处理这样一些东西
 // 1 需要完成table的绑定，也就是查DB找对应的Table，并建立起table name与Table的mapping
 // 2 需要设置相应的alias(若有).  是不是也建立一个alias与table name的映射方便后续的解析？

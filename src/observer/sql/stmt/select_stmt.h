@@ -34,6 +34,7 @@ class ComparisonExpr;
 class ConjunctionExpr;
 class UnboundFieldExpr;
 class OrderByStmt;
+class Index;
 class SubQueryExpr;
 using UEXPR = std::unique_ptr<Expression>;
 using std::unordered_map;
@@ -75,7 +76,7 @@ public:
 private:
   
 public:
-  
+  bool convert_to_vector_index(Index* index);
   const std::vector<Table *> &tables() const { return tables_; }
   FilterStmt                 *filter_stmt() const { return filter_stmt_; }
   void set_order_by_stmt(OrderByStmt* stmt) {order_by_stmt = stmt;}

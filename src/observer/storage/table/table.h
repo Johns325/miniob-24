@@ -32,7 +32,8 @@ class IndexScanner;
 class RecordDeleter;
 class Trx;
 class Db;
-
+class CreateVectorIndexStmt;
+class IvfflatIndex;
 /**
  * @brief 表
  *
@@ -89,7 +90,7 @@ public:
 
   // TODO refactor
   RC create_index(Trx *trx, std::vector<const FieldMeta *>&field_meta, const char *index_name,  bool unique);
-
+  RC create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt);
   RC get_record_scanner(RecordFileScanner &scanner, Trx *trx, ReadWriteMode mode);
 
   RC get_chunk_scanner(ChunkFileScanner &scanner, Trx *trx, ReadWriteMode mode);
@@ -138,4 +139,5 @@ private:
   DiskBufferPool    *text_buffer_pool_ = nullptr;   
   DiskBufferPool    *vector_buffer_pool_ = nullptr; 
   vector<Index *>    indexes_;
+  vector<IvfflatIndex*> vector_index_;
 };

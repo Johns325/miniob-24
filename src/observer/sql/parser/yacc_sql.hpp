@@ -117,18 +117,24 @@ extern int yydebug;
     GT = 318,                      /* GT  */
     LE = 319,                      /* LE  */
     GE = 320,                      /* GE  */
-    NE = 321,                      /* NE  */
-    OR = 322,                      /* OR  */
-    L2_DISTANCE = 323,             /* L2_DISTANCE  */
-    INNER_PRODUCT = 324,           /* INNER_PRODUCT  */
-    COSINE_DISTANCE = 325,         /* COSINE_DISTANCE  */
-    LIMIT_T = 326,                 /* LIMIT_T  */
-    NUMBER = 327,                  /* NUMBER  */
-    FLOAT = 328,                   /* FLOAT  */
-    ID = 329,                      /* ID  */
-    SSS = 330,                     /* SSS  */
-    VECTOR_DATA = 331,             /* VECTOR_DATA  */
-    UMINUS = 332                   /* UMINUS  */
+    WITH_T = 321,                  /* WITH_T  */
+    TYPE_T = 322,                  /* TYPE_T  */
+    IVFFLAT = 323,                 /* IVFFLAT  */
+    DISTANCE_T = 324,              /* DISTANCE_T  */
+    LISTS_T = 325,                 /* LISTS_T  */
+    PROBES_T = 326,                /* PROBES_T  */
+    NE = 327,                      /* NE  */
+    OR = 328,                      /* OR  */
+    L2_DISTANCE = 329,             /* L2_DISTANCE  */
+    INNER_PRODUCT = 330,           /* INNER_PRODUCT  */
+    COSINE_DISTANCE = 331,         /* COSINE_DISTANCE  */
+    LIMIT_T = 332,                 /* LIMIT_T  */
+    NUMBER = 333,                  /* NUMBER  */
+    FLOAT = 334,                   /* FLOAT  */
+    ID = 335,                      /* ID  */
+    SSS = 336,                     /* SSS  */
+    VECTOR_DATA = 337,             /* VECTOR_DATA  */
+    UMINUS = 338                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -137,7 +143,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 142 "yacc_sql.y"
+#line 148 "yacc_sql.y"
 
   ParsedSqlNode *                            sql_node;
   Expression *                          condition;
@@ -158,6 +164,7 @@ union YYSTYPE
   bool                                       boolean;
   bool *                                     boolean_ptr;
   std::vector<float> *                       vector;
+  std::unordered_map<std::string,std::string>*          str_2_str;
   std::vector<order_by>*                     order_by_type;
   std::vector<rel_info*>*                     rel_list_type;
   std::vector<OrderBySqlNode>*               order_by_list;
@@ -165,7 +172,7 @@ union YYSTYPE
   std::vector<Assignment*>*                  assignment_ptr_list;
   std::vector<Value*>*                       const_value_list_type;
 
-#line 169 "yacc_sql.hpp"
+#line 176 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

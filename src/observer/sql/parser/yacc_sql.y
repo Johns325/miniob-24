@@ -6,7 +6,7 @@
 #include <string.h>
 #include <algorithm>
 #include <unordered_set>
-
+#include <unordered_map>
 #include "common/log/log.h"
 #include "common/lang/string.h"
 #include "sql/parser/parse_defs.h"
@@ -130,6 +130,12 @@ static int and_flag  = 1;
         GT
         LE
         GE
+        WITH_T
+        TYPE_T
+        IVFFLAT
+        DISTANCE_T
+        LISTS_T
+        PROBES_T
         NE
         OR
         L2_DISTANCE
@@ -159,6 +165,7 @@ static int and_flag  = 1;
   bool                                       boolean;
   bool *                                     boolean_ptr;
   std::vector<float> *                       vector;
+  std::unordered_map<std::string,std::string>*          str_2_str;
   std::vector<order_by>*                     order_by_type;
   std::vector<rel_info*>*                     rel_list_type;
   std::vector<OrderBySqlNode>*               order_by_list;
@@ -221,14 +228,19 @@ static int and_flag  = 1;
 %type <sql_node>            drop_table_stmt
 %type <sql_node>            show_tables_stmt
 %type <sql_node>            desc_table_stmt
+%type <number>            distance_type
 %type <sql_node>            create_index_stmt
 %type <boolean>             unique_stmt
 %type <boolean>             as_stmt
+// %type <string>              type_value
+%type <str_2_str>           vi_arg
+%type <str_2_str>           vi_arg_list
 %type <string>              alias_stmt
 // %type <order_by_type>       order_by_seq
 // %type <order_by_type>       order_by
 %type <sql_node>            drop_index_stmt
 %type <sql_node>            sync_stmt
+%type <sql_node>            create_vector_index_stmt
 %type <sql_node>            begin_stmt
 %type <sql_node>            commit_stmt
 %type <sql_node>            rollback_stmt
@@ -264,6 +276,7 @@ command_wrapper:
   | show_tables_stmt
   | desc_table_stmt
   | create_index_stmt
+  | create_vector_index_stmt
   | drop_index_stmt
   | sync_stmt
   | begin_stmt
@@ -367,6 +380,92 @@ create_index_stmt:    /*create index 语句的语法解析树*/   //ok
       free($8);
     }
     ;
+create_vector_index_stmt:
+    //CREATE VECTOR INDEX V_I ON TEST(C1) WITH_T(TYPE=IVFFLAT, DISTANCE=L2_DISTANCE, LISTS=1, PROBES=1);
+    // CREATE VECTOR_T INDEX ID ON ID LBRACE ID RBRACE WITH_T LBRACE vi_arg_list RBRACE
+    // CREATE VECTOR INDEX vector_idx  ON items (embedding)  WITH (distance=l2_distance, type=ivfflat, lists=245, probes=5);
+    CREATE VECTOR_T INDEX ID ON ID LBRACE ID RBRACE WITH_T LBRACE vi_arg_list RBRACE
+  {
+    $$ = new ParsedSqlNode(SCF_CREATE_VECTOR_INDEX);
+    CreateVectorIndexSqlNode &idx = $$->create_vector_index;
+    idx.index_name = $4;
+    idx.relation_name = $6;
+    idx.attribute_name = $8;
+    idx.args = $12;
+    free($4);
+    free($6);
+    free($8);
+  };
+
+// type_value:
+// {
+//   $$ = nullptr;
+// }
+  // L2_DISTANCE: {
+  //   $$ = "l2_distance";
+  // }
+  // | COSINE_DISTANCE {
+  //   $$ = "cosine_distance";
+  // }
+  // | INNER_PRODUCT {
+  //   $$ = "inner_product";
+  // }
+  // ;
+vi_arg_list:
+  // {
+  //   $$ = std::unordered_map<string, string>;
+  // }
+  vi_arg {
+    printf("hello\n");
+    $$ = $1;
+  }
+  | vi_arg COMMA vi_arg_list {
+    $$ = $3;
+    for (auto &pr : *($1)) {
+      $$->insert({pr.first, pr.second});
+    }
+    delete $1;
+  }
+  ;
+
+distance_type:
+  L2_DISTANCE {
+    $$ = 1;
+  }
+  |COSINE_DISTANCE {
+    $$ = 2;
+  }
+  | INNER_PRODUCT {
+    $$ = 3;
+  }
+  ;
+
+vi_arg:
+  DISTANCE_T EQ distance_type {
+    printf("distance\n");
+    string val = ($3 == 1 ? "l2" : ($3 == 2 ? "cosine" : "inner"));
+    $$ = new std::unordered_map<string, string>;
+    $$->insert({string("distance"), val});
+    // delete $3;
+  }
+  | TYPE_T EQ IVFFLAT {
+    printf("type\n");
+    $$ = new std::unordered_map<string, string>;
+    $$->insert({string("type"), string("ivfflat")});
+    
+  }
+  | LISTS_T EQ NUMBER {
+    printf("list\n");
+    $$ = new std::unordered_map<string, string>;
+    $$->insert({string("lists"), std::to_string($3)});
+  }
+  | PROBES_T EQ NUMBER {
+    printf("probes\n");
+    $$ = new std::unordered_map<string, string>;
+    $$->insert({string("probes"), std::to_string($3)});
+  }
+  ;
+
 unique_stmt: // ok
   /* empty */
   {
@@ -896,7 +995,7 @@ relation:
     ;
 limit_opt:
   LIMIT_T NUMBER      { $$ = $2; }         // 如果有 LIMIT，设置为 number
-  |                   { $$ = 9999; }          // 如果没有 LIMIT，设置为 0
+  |                   { $$ = -1; }          // 如果没有 LIMIT，设置为 0
 ;
 rel_list:
   /* empty */ {

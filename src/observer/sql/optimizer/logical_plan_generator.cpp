@@ -199,6 +199,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
   unique_ptr<LogicalOperator> order_by_oper;
   if (select_stmt->order_by_stmt != nullptr) {
+    // chece do we need convert order by + limit to vector index
     rc = create(select_stmt->order_by_stmt, order_by_oper);
     if (OB_FAIL(rc)) {
       LOG_WARN("failed to create group by logical plan. rc=%s", strrc(rc));
