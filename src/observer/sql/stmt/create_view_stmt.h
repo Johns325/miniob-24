@@ -35,6 +35,8 @@ public:
   StmtType type() const override { return StmtType::CREATE_VIEW; }
 
   static RC            create(Db *db, const CreateViewSqlNode &create_view, Stmt *&stmt);
+  const std::string    &view_name() const {return view_name_;}
+  SelectStmt*          select_stmt() {return select_stmt_;}
 
 private:
   std::string                  view_name_;

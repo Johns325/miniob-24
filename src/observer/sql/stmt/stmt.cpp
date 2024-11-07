@@ -33,6 +33,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/create_select_stmt.h"
 #include "sql/stmt/update_stmt.h"
 #include "sql/parser/expression_binder.h"
+#include "create_view_stmt.h"
 bool stmt_type_ddl(StmtType type)
 {
   switch (type) {

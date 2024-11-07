@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/trx/trx.h"
 #include "storage/clog/disk_log_handler.h"
 #include "storage/clog/integrated_log_replayer.h"
+#include "sql/stmt/select_stmt.h"
 
 using namespace common;
 
@@ -159,6 +160,27 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
 
   opened_tables_[table_name] = table;
   LOG_INFO("Create table success. table name=%s, table_id:%d", table_name, table_id);
+  return RC::SUCCESS;
+}
+
+RC Db::create_view(const char *view_name, SelectStmt *select_stmt)
+{
+  RC rc = RC::SUCCESS;
+  if (opened_views_.count(view_name)!=0) {
+    LOG_WARN("%s has been created before.", view_name);
+    return RC::SCHEMA_TABLE_EXIST;
+  }
+
+  View *view=new View();
+  rc=view->create(this,view_name,select_stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to create view %s.", view_name);
+    delete view;
+    return rc;
+  }
+
+  opened_views_[view_name] = view;
+  LOG_INFO("Create view success. view name=%s", view_name);
   return RC::SUCCESS;
 }
 
