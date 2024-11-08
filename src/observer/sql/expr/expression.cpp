@@ -444,9 +444,9 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       return rc;
     }
   }
-  if (right_values_.empty()) {
-    sql_debug("right hand side is empty and comparator is%d",comp_);
-  }
+  // if (right_values_.empty()) {
+  //   sql_debug("right hand side is empty and comparator is%d",comp_);
+  // }
   // right hand side
   if (right_->type() == ExprType::SUB_QUERY) {
     // auto query_expr = static_cast<SubQueryExpr*>(right_.get());

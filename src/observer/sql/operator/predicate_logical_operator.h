@@ -33,7 +33,10 @@ public:
       *iter = nullptr;
     }
   } 
+  void put_expressions(std::list<Expression*>& expressions);
+  std::list<Expression*>& get_special_expressions() {  return expressions_to_reset_;}
   LogicalOperatorType type() const override { return LogicalOperatorType::PREDICATE; }
 private:
   std::list<SubQueryExpr*> sub_queries_;
+  std::list<Expression*> expressions_to_reset_;
 };

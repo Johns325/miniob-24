@@ -203,7 +203,7 @@ RC ExpressionBinder::bind_unbound_field_expression(
   }
   if (outer_reference) {
     for (auto &expr : bound_expressions) {
-      expressions_.emplace_back(expr.get());
+      // expressions_.emplace_back(expr.get());
       db_->col_references[table].push_back(expr.get());
     }
   }

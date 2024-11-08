@@ -247,10 +247,15 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
   ASSERT(expressions.size() == 1, "predicate logical operator's children should be 1");
 
   unique_ptr<Expression> expression = std::move(expressions.front());
-  oper = unique_ptr<PhysicalOperator>(new PredicatePhysicalOperator(std::move(expression)));
-  if (pred_oper.break_pipeline()) {
-    oper->set_break_pipeline(true);
+  auto pred_phy_oper = unique_ptr<PredicatePhysicalOperator>(new PredicatePhysicalOperator(std::move(expression)));
+  if (pred_phy_oper->break_pipeline()) {
+    pred_phy_oper->set_break_pipeline(true);
   }
+  if (!pred_oper.sub_queries().empty()) {
+    pred_phy_oper->put_sub_queries(pred_oper.sub_queries()) ;
+  }
+  pred_phy_oper->put_expressions(pred_oper.get_special_expressions());
+  oper = std::move(pred_phy_oper);
   oper->add_child(std::move(child_phy_oper));
   return rc;
 }
