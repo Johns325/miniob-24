@@ -99,7 +99,7 @@ RC TableScanPhysicalOperator::filter(RowTuple &tuple, bool &result)
 {
   RC    rc = RC::SUCCESS;
   Value value;
-  for (unique_ptr<Expression> &expr : predicates_) {
+  // for (unique_ptr<Expression> &expr : predicates_) {
     
     // auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
     // if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
@@ -120,17 +120,17 @@ RC TableScanPhysicalOperator::filter(RowTuple &tuple, bool &result)
     //       return rc;
     //   }
     // }
-    rc = expr->get_value(tuple, value);    
-    if (rc != RC::SUCCESS) {
-      return rc;
-    }
+    // rc = expr->get_value(tuple, value);    
+    // if (rc != RC::SUCCESS) {
+    //   return rc;
+    // }
 
-    bool tmp_result = value.get_boolean();
-    if (!tmp_result) {
-      result = false;
-      return rc;
-    }
-  }
+    // bool tmp_result = value.get_boolean();
+    // if (!tmp_result) {
+    //   result = false;
+    //   return rc;
+    // }
+  // }
 
   result = true;
   return rc;
