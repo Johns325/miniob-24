@@ -83,7 +83,10 @@ public:
    * @brief 根据表ID查找表
    */
   Table *find_table(int32_t table_id) const;
-
+  /**
+   * @brief 根据视图名查找视图
+   */
+  View *find_view(const char *view_name) const;
   /// @brief 当前数据库的名称
   const char *name() const;
 

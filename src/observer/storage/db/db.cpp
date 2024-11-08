@@ -231,6 +231,15 @@ Table *Db::find_table(int32_t table_id) const
   return nullptr;
 }
 
+View *Db::find_view(const char *view_name) const
+{
+  unordered_map<string, View *>::const_iterator iter = opened_views_.find(view_name);
+  if (iter != opened_views_.end()) {
+    return iter->second;
+  }
+  return nullptr;
+}
+
 RC Db::open_all_tables()
 {
   vector<string> table_meta_files;
