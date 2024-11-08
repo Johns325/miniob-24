@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/trx/trx.h"
 #include "storage/clog/disk_log_handler.h"
 #include "storage/clog/integrated_log_replayer.h"
+#include "sql/stmt/select_stmt.h"
 
 using namespace common;
 
@@ -162,6 +163,27 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   return RC::SUCCESS;
 }
 
+RC Db::create_view(const char *view_name, SelectStmt *select_stmt)
+{
+  RC rc = RC::SUCCESS;
+  if (opened_views_.count(view_name)!=0) {
+    LOG_WARN("%s has been created before.", view_name);
+    return RC::SCHEMA_TABLE_EXIST;
+  }
+
+  View *view=new View();
+  rc=view->create(this,view_name,select_stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to create view %s.", view_name);
+    delete view;
+    return rc;
+  }
+
+  opened_views_[view_name] = view;
+  LOG_INFO("Create view success. view name=%s", view_name);
+  return RC::SUCCESS;
+}
+
 auto Db::drop_table(const std::string tb_name) -> RC {
   // 需要删除的文件包括: .table, .data,.index
   if (find_table(tb_name.c_str()) == nullptr) {
@@ -209,6 +231,15 @@ Table *Db::find_table(int32_t table_id) const
     if (pair.second->table_id() == table_id) {
       return pair.second;
     }
+  }
+  return nullptr;
+}
+
+View *Db::find_view(const char *view_name) const
+{
+  unordered_map<string, View *>::const_iterator iter = opened_views_.find(view_name);
+  if (iter != opened_views_.end()) {
+    return iter->second;
   }
   return nullptr;
 }
