@@ -18,11 +18,27 @@ See the Mulan PSL v2 for more details. */
 #include "storage/field/field.h"
 #include "storage/record/record.h"
 #include "sql/expr/expression.h"
+#include "event/sql_debug.h"
 PredicatePhysicalOperator::PredicatePhysicalOperator(std::unique_ptr<Expression> expr) : expression_(std::move(expr))
 {
   ASSERT(expression_->value_type() == AttrType::BOOLEANS, "predicate's expression should be BOOLEAN type");
 }
 
+    // auto cmp_expr = static_cast<ComparisonExpr*>(expr.get());
+    // if (cmp_expr->left()->type() == ExprType::SUB_QUERY) {
+    //   auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->left().get());
+    //   if (!sub_query->break_pipeline())
+    //     rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(true), true);
+    //   if (!OB_SUCC(rc)) 
+    //   return rc;
+    // }
+    // if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
+    //   auto sub_query = static_cast<SubQueryExpr*>(cmp_expr->right().get());
+    //   if (!sub_query->break_pipeline())
+    //     rc = cmp_expr->handle_sub_query(sub_query->get_physical_operator(), cmp_expr->value_list(false), false);
+    //   if (!OB_SUCC(rc))
+    //     return rc;
+    // }
 RC PredicatePhysicalOperator::hand_all_sub_queries() {
   RC rc{RC::SUCCESS};
   if (expression_->type() == ExprType::CONJUNCTION) {
@@ -40,20 +56,43 @@ RC PredicatePhysicalOperator::hand_all_sub_queries() {
          if (!OB_SUCC(rc))
           return rc;
         }
+        if (cmp_expr->left()->type() == ExprType::VALUE && cmp_expr->right()->type() == ExprType::VALUE) {
+          Value cell;
+          if (RC::SUCCESS != cmp_expr->try_get_value(cell))
+            continue;
+          if (cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::OR)) {
+            predicates_always_true_ = true;
+            break;
+          }
+          else if (!cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::AND)){
+            predicates_always_false_ = true;
+            break;
+          }
+        }
       }
     }
   } else if (expression_->type() == ExprType::COMPARISON) {
     auto cmp_expr = static_cast<ComparisonExpr*>(expression_.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
       rc =cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+      if (!OB_SUCC(rc))
+        return rc;
     }
-    if (!OB_SUCC(rc))
-      return rc;
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
       rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
+      if (!OB_SUCC(rc))
+        return rc;
     }
-    if (!OB_SUCC(rc))
-      return rc;
+    if (cmp_expr->left()->type() == ExprType::VALUE && cmp_expr->right()->type() == ExprType::VALUE) {
+      Value cell;
+      if (RC::SUCCESS == cmp_expr->try_get_value(cell)) {  
+        // 因为predicate只有一个，左右直接根据CELL的值设置always_true or always_false
+        if (cell.get_boolean()) {
+          predicates_always_true_ = true;
+        } else
+          predicates_always_false_ = true;
+      }
+    }
   }
   return rc;
 }
@@ -112,9 +151,11 @@ RC PredicatePhysicalOperator::open(Trx *trx)
 
 RC PredicatePhysicalOperator::next()
 {
+  if (predicates_always_false_) { // predicates are always false.
+    return RC::RECORD_EOF;
+  }
   RC                rc   = RC::SUCCESS;
   PhysicalOperator *oper = children_.front().get();
-
   while (RC::SUCCESS == (rc = oper->next())) {
     Tuple *tuple = oper->current_tuple();
     if (nullptr == tuple) {
@@ -122,7 +163,9 @@ RC PredicatePhysicalOperator::next()
       LOG_WARN("failed to get tuple from operator");
       break;
     }
-
+    if (predicates_always_true_) { //不用过滤，conditions可能返回true
+      return RC::SUCCESS;
+    }
     rc = hand_all_sub_queries_every_time(tuple);
     if (!OB_SUCC(rc))
       return rc;
@@ -136,6 +179,7 @@ RC PredicatePhysicalOperator::next()
     }
 
     if (value.get_boolean()) {
+      sql_debug("get a tuple: %s ", tuple->to_string().c_str());
       return rc;
     }
   }

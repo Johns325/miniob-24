@@ -45,5 +45,7 @@ public:
 private:
   std::unique_ptr<Expression> expression_; 
   Trx *trx_{nullptr};
+  bool predicates_always_false_ { false};
+  bool predicates_always_true_ {false};
   // std::list<SubQueryExpr*> sub_queries_;
 };

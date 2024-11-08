@@ -575,15 +575,15 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
 
   Value tmp_value;
   for (const unique_ptr<Expression> &expr : children_) {
-    if (expr->type() == ExprType::COMPARISON) {
-      auto cmp_exp = static_cast<ComparisonExpr*>(expr.get());
-      if (cmp_exp->left()->type() == ExprType::SUB_QUERY) {
-        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->left().get())->get_physical_operator(), cmp_exp->value_list(true), true);
-      }
-      if (cmp_exp->right()->type() == ExprType::SUB_QUERY) {
-        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->right().get())->get_physical_operator(), cmp_exp->value_list((false)), false);
-      }
-    }
+    // if (expr->type() == ExprType::COMPARISON) {
+    //   auto cmp_exp = static_cast<ComparisonExpr*>(expr.get());
+    //   if (cmp_exp->left()->type() == ExprType::SUB_QUERY) {
+    //     cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->left().get())->get_physical_operator(), cmp_exp->value_list(true), true);
+    //   }
+    //   if (cmp_exp->right()->type() == ExprType::SUB_QUERY) {
+    //     cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->right().get())->get_physical_operator(), cmp_exp->value_list((false)), false);
+    //   }
+    // }
     rc = expr->get_value(tuple, tmp_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
