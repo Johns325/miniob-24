@@ -17,11 +17,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/db/db.h"
 #include "storage/table/table.h"
 #include "common/type/attr_type.h"
-<<<<<<< HEAD
 #include "common/global_context.h"
-=======
 #include "sql/expr/expression.h"
->>>>>>> lify
 
 InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount)
     : table_(table), values_(values), value_amount_(value_amount)

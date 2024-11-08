@@ -26,12 +26,9 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/trx_end_executor.h"
 #include "sql/executor/drop_table_executor.h"
 #include "sql/stmt/stmt.h"
-<<<<<<< HEAD
 #include "sql/stmt/create_vector_index_stmt.h"
 #include "sql/executor/create_vector_index_executor.h"
-=======
 #include "sql/executor/create_view_executor.h"
->>>>>>> lify
 
 RC CommandExecutor::execute(SQLStageEvent *sql_event)
 {
