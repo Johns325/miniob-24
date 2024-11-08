@@ -18,7 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include <vector>
 
 #include "sql/stmt/stmt.h"
-
+#include "sql/expr/expression.h"
 class Db;
 class SelectStmt;
 /**

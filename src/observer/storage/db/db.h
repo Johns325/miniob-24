@@ -25,11 +25,13 @@ See the Mulan PSL v2 for more details. */
 #include "storage/clog/disk_log_handler.h"
 #include "storage/buffer/double_write_buffer.h"
 #include "storage/view/view.h"
+#include "sql/expr/expression.h"
 
 class Table;
 class LogHandler;
 class BufferPoolManager;
 class TrxKit;
+class View;
 
 /**
  * @brief 一个DB实例负责管理一批表

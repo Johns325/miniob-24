@@ -42,13 +42,13 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
   }
   if (view!=nullptr) {
     std::vector<Table*> tables=view->get_select()->tables();
-    if (tables.size()==1) {
+    if (tables.size()!=1) {
       LOG_WARN("only select_stmt with one table can be inserted,view=%s",view->name());
       return RC::INVALID_ARGUMENT;
     }
      
     table=tables[0];
-    std::vector<std::unique_ptr<Expression>> exprs=view->get_select()->query_expressions();
+    std::vector<std::unique_ptr<Expression>> &exprs=view->get_select()->query_expressions();
     if (exprs.empty()) {
       LOG_WARN("no fields selected, view=%s",view->name());
       return RC::INVALID_ARGUMENT;

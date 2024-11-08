@@ -1,3 +1,5 @@
+#pragma once
+
 #include "storage/db/db.h"
 #include "sql/stmt/select_stmt.h"
 #include "common/rc.h"

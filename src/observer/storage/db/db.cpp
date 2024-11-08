@@ -30,6 +30,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/clog/disk_log_handler.h"
 #include "storage/clog/integrated_log_replayer.h"
 #include "sql/stmt/select_stmt.h"
+#include "sql/expr/expression.h"
 
 using namespace common;
 
