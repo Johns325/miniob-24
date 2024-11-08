@@ -43,24 +43,24 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
   }
 
   ASSERT(logical_operator, "logical operator is null");
-  if (logical_operator->type() == LogicalOperatorType::PROJECTION) {
-    auto proj_logical_oper = static_cast<ProjectLogicalOperator*>(logical_operator.get());
-    for (auto query : proj_logical_oper->sub_queries()) {
-      std::unique_ptr<LogicalOperator> oper(query->get_logical_operator());
-      rc = rewrite(oper);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
-        return rc;
-      }
-      oper.release();
-    }
+  // if (logical_operator->type() == LogicalOperatorType::PROJECTION) {
+  //   auto proj_logical_oper = static_cast<ProjectLogicalOperator*>(logical_operator.get());
+  //   for (auto query : proj_logical_oper->sub_queries()) {
+  //     std::unique_ptr<LogicalOperator> oper(query->get_logical_operator());
+  //     rc = rewrite(oper);
+  //     if (rc != RC::SUCCESS) {
+  //       LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
+  //       return rc;
+  //     }
+  //     oper.release();
+  //   }
 
-  }
-  rc = rewrite(logical_operator);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
-    return rc;
-  }
+  // }
+  // rc = rewrite(logical_operator);
+  // if (rc != RC::SUCCESS) {
+  //   LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
+  //   return rc;
+  // }
  
 
   rc = optimize(logical_operator);

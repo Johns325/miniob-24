@@ -3289,85 +3289,85 @@ yyreduce:
 
   case 150: /* comp_op: EQ  */
 #line 1198 "yacc_sql.y"
-         { (yyval.comp) = EQUAL_TO; }
+         { (yyval.comp) = CompOp::EQUAL_TO; }
 #line 3294 "yacc_sql.cpp"
     break;
 
   case 151: /* comp_op: LT  */
 #line 1199 "yacc_sql.y"
-         { (yyval.comp) = LESS_THAN; }
+         { (yyval.comp) = CompOp::LESS_THAN; }
 #line 3300 "yacc_sql.cpp"
     break;
 
   case 152: /* comp_op: GT  */
 #line 1200 "yacc_sql.y"
-         { (yyval.comp) = GREAT_THAN; }
+         { (yyval.comp) = CompOp::GREAT_THAN; }
 #line 3306 "yacc_sql.cpp"
     break;
 
   case 153: /* comp_op: LE  */
 #line 1201 "yacc_sql.y"
-         { (yyval.comp) = LESS_EQUAL; }
+         { (yyval.comp) = CompOp::LESS_EQUAL; }
 #line 3312 "yacc_sql.cpp"
     break;
 
   case 154: /* comp_op: GE  */
 #line 1202 "yacc_sql.y"
-         { (yyval.comp) = GREAT_EQUAL; }
+         { (yyval.comp) = CompOp::GREAT_EQUAL; }
 #line 3318 "yacc_sql.cpp"
     break;
 
   case 155: /* comp_op: NE  */
 #line 1203 "yacc_sql.y"
-         { (yyval.comp) = NOT_EQUAL; }
+         { (yyval.comp) = CompOp::NOT_EQUAL; }
 #line 3324 "yacc_sql.cpp"
     break;
 
   case 156: /* comp_op: LIKE  */
 #line 1204 "yacc_sql.y"
-           { (yyval.comp) = LK;}
+           { (yyval.comp) = CompOp::LK;}
 #line 3330 "yacc_sql.cpp"
     break;
 
   case 157: /* comp_op: NOT LIKE  */
 #line 1205 "yacc_sql.y"
-               { (yyval.comp) = NOT_LK;}
+               { (yyval.comp) = CompOp::NOT_LK;}
 #line 3336 "yacc_sql.cpp"
     break;
 
   case 158: /* comp_op: IS NOT  */
 #line 1206 "yacc_sql.y"
-             { (yyval.comp) = IS_NOT_NULL;}
+             { (yyval.comp) = CompOp::IS_NOT_NULL;}
 #line 3342 "yacc_sql.cpp"
     break;
 
   case 159: /* comp_op: IS  */
 #line 1207 "yacc_sql.y"
-          { (yyval.comp) = IS_NULL;}
+          { (yyval.comp) = CompOp::IS_NULL;}
 #line 3348 "yacc_sql.cpp"
     break;
 
   case 160: /* comp_op: IN  */
 #line 1208 "yacc_sql.y"
-          { (yyval.comp) = IN_OP;}
+          { (yyval.comp) = CompOp::IN_OP;}
 #line 3354 "yacc_sql.cpp"
     break;
 
   case 161: /* comp_op: NOT IN  */
 #line 1209 "yacc_sql.y"
-              { (yyval.comp) = NOT_IN;}
+              { (yyval.comp) = CompOp::NOT_IN;}
 #line 3360 "yacc_sql.cpp"
     break;
 
   case 162: /* comp_op: EXISTS  */
 #line 1210 "yacc_sql.y"
-              { (yyval.comp) = EXISTS_OP;}
+              { (yyval.comp) = CompOp::EXISTS_OP;}
 #line 3366 "yacc_sql.cpp"
     break;
 
   case 163: /* comp_op: NOT EXISTS  */
 #line 1211 "yacc_sql.y"
-                  { (yyval.comp) = NOT_EXISTS;}
+                  { (yyval.comp) = CompOp::NOT_EXISTS;}
 #line 3372 "yacc_sql.cpp"
     break;
 

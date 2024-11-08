@@ -275,7 +275,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     return RC::SUCCESS;
   }
   // both left and right are not null type.
-  if (comp_ == LK || comp_ == NOT_LK) {
+  if (comp_ == CompOp::LK || comp_ == CompOp::NOT_LK) {
     if (left.attr_type() != AttrType::CHARS || right.attr_type() != AttrType::CHARS) {
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
@@ -290,28 +290,28 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
   int cmp_result = left.compare(right);
   result         = false;
   switch (comp_) {
-    case EQUAL_TO: {
+    case CompOp::EQUAL_TO: {
       result = (0 == cmp_result);
     } break;
-    case LESS_EQUAL: {
+    case CompOp::LESS_EQUAL: {
       result = (cmp_result <= 0);
     } break;
-    case NOT_EQUAL: {
+    case CompOp::NOT_EQUAL: {
       result = (cmp_result != 0);
     } break;
-    case LESS_THAN: {
+    case CompOp::LESS_THAN: {
       result = (cmp_result < 0);
     } break;
-    case GREAT_EQUAL: {
+    case CompOp::GREAT_EQUAL: {
       result = (cmp_result >= 0);
     } break;
-    case GREAT_THAN: {
+    case CompOp::GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
-    case IN_OP:{
+    case CompOp::IN_OP:{
       result = (cmp_result == 0);
     }break;
-    case NOT_IN: {
+    case CompOp::NOT_IN: {
       result = (cmp_result != 0);
     } break;
     default: {

@@ -62,7 +62,7 @@ public:
   FilterObj &right() { return right_; }
 
 private:
-  CompOp    comp_ = NO_OP;
+  CompOp    comp_ = CompOp::NO_OP;
   FilterObj left_;
   FilterObj right_;
 };

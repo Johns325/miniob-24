@@ -23,54 +23,74 @@ PredicatePhysicalOperator::PredicatePhysicalOperator(std::unique_ptr<Expression>
   ASSERT(expression_->value_type() == AttrType::BOOLEANS, "predicate's expression should be BOOLEAN type");
 }
 
-void PredicatePhysicalOperator::hand_all_sub_queries() {
+RC PredicatePhysicalOperator::hand_all_sub_queries() {
+  RC rc{RC::SUCCESS};
   if (expression_->type() == ExprType::CONJUNCTION) {
     auto conj_expr = static_cast<ConjunctionExpr*>(expression_.get());
     for (auto& child : conj_expr->children()) {
       if (child->type() == ExprType::COMPARISON) {
         auto cmp_expr = static_cast<ComparisonExpr*>(child.get());
         if (cmp_expr->left()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
-          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+          rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
         }
+        if (!OB_SUCC(rc))
+          return rc;
         if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
-          cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
+         rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
+         if (!OB_SUCC(rc))
+          return rc;
         }
       }
     }
   } else if (expression_->type() == ExprType::COMPARISON) {
     auto cmp_expr = static_cast<ComparisonExpr*>(expression_.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
-      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
+      rc =cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
     }
+    if (!OB_SUCC(rc))
+      return rc;
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
-      cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
+      rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
     }
+    if (!OB_SUCC(rc))
+      return rc;
   }
+  return rc;
 }
 
-void PredicatePhysicalOperator::hand_all_sub_queries_every_time(Tuple *t) {
+RC PredicatePhysicalOperator::hand_all_sub_queries_every_time(Tuple *t) {
+  RC rc{RC::SUCCESS};
   if (expression_->type() == ExprType::CONJUNCTION) {
     auto conj_expr = static_cast<ConjunctionExpr*>(expression_.get());
     for (auto& child : conj_expr->children()) {
       if (child->type() == ExprType::COMPARISON) {
         auto cmp_expr = static_cast<ComparisonExpr*>(child.get());
         if (cmp_expr->left()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
-          cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->left().get()), trx_, cmp_expr->value_list(true),  true, t);
+          rc = cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->left().get()), trx_, cmp_expr->value_list(true),  true, t);
         }
+        if (!OB_SUCC(rc))
+          return rc;
         if (cmp_expr->right()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
-          cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->right().get()),trx_, cmp_expr->value_list(false),  false, t);
+          rc = cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->right().get()),trx_, cmp_expr->value_list(false),  false, t);
         }
+        if (!OB_SUCC(rc))
+          return rc;
       }
     }
   } else if (expression_->type() == ExprType::COMPARISON) {
     auto cmp_expr = static_cast<ComparisonExpr*>(expression_.get());
     if (cmp_expr->left()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
-      cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->left().get()), trx_, cmp_expr->value_list(true),  true, t);
+      rc = cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->left().get()), trx_, cmp_expr->value_list(true),  true, t);
     }
+    if (!OB_SUCC(rc))
+      return rc;
     if (cmp_expr->right()->type() == ExprType::SUB_QUERY && static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
-      cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->right().get()),trx_, cmp_expr->value_list(false),  false, t);
+      rc = cmp_expr->handle_sub_query_from_scrath(static_cast<SubQueryExpr*>(cmp_expr->right().get()),trx_, cmp_expr->value_list(false),  false, t);
     }
+    if (!OB_SUCC(rc))
+      return rc;
   }
+  return rc;
 }
 
 RC PredicatePhysicalOperator::open(Trx *trx)
@@ -84,7 +104,9 @@ RC PredicatePhysicalOperator::open(Trx *trx)
   if (!OB_SUCC(rc)) {
     return rc;
   }
-  hand_all_sub_queries();
+  rc = hand_all_sub_queries();
+  if (!OB_SUCC(rc))
+    return rc;
   return RC::SUCCESS;
 }
 
@@ -101,7 +123,9 @@ RC PredicatePhysicalOperator::next()
       break;
     }
 
-    hand_all_sub_queries_every_time(tuple);
+    rc = hand_all_sub_queries_every_time(tuple);
+    if (!OB_SUCC(rc))
+      return rc;
     Value value;
     rc = expression_->get_value(*tuple, value);
     if (rc == RC::DIVIDE_ZERO) {

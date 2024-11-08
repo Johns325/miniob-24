@@ -40,8 +40,8 @@ public:
   Tuple *current_tuple() override;
 
   RC tuple_schema(TupleSchema &schema) const override;
-  void hand_all_sub_queries();
-  void hand_all_sub_queries_every_time(Tuple *t);
+  RC hand_all_sub_queries();
+  RC hand_all_sub_queries_every_time(Tuple *t);
 private:
   std::unique_ptr<Expression> expression_; 
   Trx *trx_{nullptr};

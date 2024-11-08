@@ -1195,20 +1195,20 @@ null_condition:
     ;
 
 comp_op:
-      EQ { $$ = EQUAL_TO; }
-    | LT { $$ = LESS_THAN; }
-    | GT { $$ = GREAT_THAN; }
-    | LE { $$ = LESS_EQUAL; }
-    | GE { $$ = GREAT_EQUAL; }
-    | NE { $$ = NOT_EQUAL; }
-    | LIKE { $$ = LK;}
-    | NOT LIKE { $$ = NOT_LK;}
-    | IS NOT { $$ = IS_NOT_NULL;}
-    | IS  { $$ = IS_NULL;}
-    | IN  { $$ = IN_OP;}
-    | NOT IN  { $$ = NOT_IN;}
-    | EXISTS  { $$ = EXISTS_OP;}
-    | NOT EXISTS  { $$ = NOT_EXISTS;}
+      EQ { $$ = CompOp::EQUAL_TO; }
+    | LT { $$ = CompOp::LESS_THAN; }
+    | GT { $$ = CompOp::GREAT_THAN; }
+    | LE { $$ = CompOp::LESS_EQUAL; }
+    | GE { $$ = CompOp::GREAT_EQUAL; }
+    | NE { $$ = CompOp::NOT_EQUAL; }
+    | LIKE { $$ = CompOp::LK;}
+    | NOT LIKE { $$ = CompOp::NOT_LK;}
+    | IS NOT { $$ = CompOp::IS_NOT_NULL;}
+    | IS  { $$ = CompOp::IS_NULL;}
+    | IN  { $$ = CompOp::IN_OP;}
+    | NOT IN  { $$ = CompOp::NOT_IN;}
+    | EXISTS  { $$ = CompOp::EXISTS_OP;}
+    | NOT EXISTS  { $$ = CompOp::NOT_EXISTS;}
     ;
 
 // your code here
