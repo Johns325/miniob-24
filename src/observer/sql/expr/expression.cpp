@@ -271,6 +271,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     return RC::SUCCESS;
   } else if (left.attr_type() == AttrType::NULLS || right.attr_type() == AttrType::NULLS) {
     // 其中一个结果是null。结果为true当且仅当comp_ == IS_NOT_NULL
+    sql_debug("we are in here");
     result = comp_ == CompOp::IS_NOT_NULL;
     return RC::SUCCESS;
   }
@@ -444,9 +445,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       return rc;
     }
   }
-  // if (right_values_.empty()) {
-  //   sql_debug("right hand side is empty and comparator is%d",comp_);
-  // }
+  
   // right hand side
   if (right_->type() == ExprType::SUB_QUERY) {
     // auto query_expr = static_cast<SubQueryExpr*>(right_.get());
@@ -497,7 +496,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       }
     }
     value.set_boolean(comp_ == CompOp::NOT_IN);
-    return rc;
+    return RC::SUCCESS;
   }
 
   bool bool_value = false;
