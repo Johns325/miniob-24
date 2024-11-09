@@ -589,6 +589,10 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
       return rc;
     }
     bool bool_value = tmp_value.get_boolean();
+    if (children_.size() == 1) {
+      value.set_boolean(bool_value);
+      return rc;
+    }
     if ((conjunction_type_ == Type::AND && !bool_value) || (conjunction_type_ == Type::OR && bool_value)) {
       value.set_boolean(bool_value);
       return rc;
