@@ -580,7 +580,7 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
   for (auto &meta : field_metas)
     attr_names = attr_names + meta->name() + ",";
   table_meta_.swap(new_table_meta);
-  sql_debug("create index on columns [%s], and it is a unique index?%s",attr_names.c_str(), (unique ? "yes":false));
+  sql_debug("create index on columns [%s], and it is a unique index?%s",attr_names.c_str(), (unique ? "yes":"no"));
   // LOG_INFO("Successfully added a new index (%s) on the table (%s)", index_name, name());
   return rc;
 }
