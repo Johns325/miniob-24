@@ -36,6 +36,7 @@ class UnboundFieldExpr;
 class OrderByStmt;
 class Index;
 class SubQueryExpr;
+class View;
 using UEXPR = std::unique_ptr<Expression>;
 using std::unordered_map;
 // 用来记录一个select语句相应的查询信息

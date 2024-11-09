@@ -41,48 +41,62 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
   if (view!=nullptr) {
-    std::vector<Table*> tables=view->get_select()->tables();
-    if (tables.size()!=1) {
-      LOG_WARN("only select_stmt with one table can be inserted,view=%s",view->name());
+    std::vector<Table*> tables=view->get_tables();
+    if (!view->onetable()) {
+      LOG_WARN("only view with one table can be inserted,view=%s",view->name());
       return RC::INVALID_ARGUMENT;
     }
      
     table=tables[0];
-    std::vector<std::unique_ptr<Expression>> &exprs=view->get_select()->query_expressions();
-    if (exprs.empty()) {
-      LOG_WARN("no fields selected, view=%s",view->name());
-      return RC::INVALID_ARGUMENT;
-    }
+    // std::vector<std::unique_ptr<Expression>> &exprs=view->get_select()->query_expressions();
+    // if (exprs.empty()) {
+    //   LOG_WARN("no fields selected, view=%s",view->name());
+    //   return RC::INVALID_ARGUMENT;
+    // }
     // check the fields number
     Value     *values     = inserts.values.data();
     int        value_num  = static_cast<int>(inserts.values.size());
     const TableMeta &table_meta = table->table_meta();
     const int        field_num  = table_meta.field_num() - table_meta.sys_field_num();
-    if (exprs[0]->type()==ExprType::STAR) {}
-    else if (exprs[0]->type()==ExprType::FIELD) {
-      std::vector<Value>     insert_values     = inserts.values;
-      int i=0;
-      std::vector<Value> total_values;
-      for (int j=0;j<field_num;j++) {
-        if (exprs[i]->type()!=ExprType::FIELD) {
-          LOG_WARN("wrong expr type");
-          return RC::INVALID_ARGUMENT;
-        }
-        FieldExpr* expr=dynamic_cast<FieldExpr*>(exprs[i].get());
-        auto field = table_meta.field(table_meta.sys_field_num() + j);
-        if (expr->field().field_name()==field->name()) {
-          total_values.push_back(insert_values[i]);
-          i++;
-        }
-        else {
-          Value* nullval=new Value();
-          nullval->set_null();
-          total_values.push_back(*nullval);
-        }
+    std::vector<Value>     insert_values     = inserts.values;
+    int i=0;
+    std::vector<Value> total_values;
+    for (int j=0;j<field_num;j++) {
+      if (view->get_null_info(0,j)) {
+        total_values.push_back(insert_values[i]);
+        i++;
       }
-      values= total_values.data();
-      value_num=field_num;
+      else {
+        Value* nullval=new Value();
+        nullval->set_null();
+        total_values.push_back(*nullval);
+      }
     }
+    values= total_values.data();
+    value_num=field_num;
+    // if (exprs[0]->type()==ExprType::STAR) {}
+    // else if (exprs[0]->type()==ExprType::FIELD) {
+      
+    //   for (int j=0;j<field_num;j++) {
+    //     if (exprs[i]->type()!=ExprType::FIELD) {
+    //       LOG_WARN("wrong expr type");
+    //       return RC::INVALID_ARGUMENT;
+    //     }
+    //     FieldExpr* expr=dynamic_cast<FieldExpr*>(exprs[i].get());
+    //     auto field = table_meta.field(table_meta.sys_field_num() + j);
+    //     if (expr->field().field_name()==field->name()) {
+    //       total_values.push_back(insert_values[i]);
+    //       i++;
+    //     }
+    //     else {
+    //       Value* nullval=new Value();
+    //       nullval->set_null();
+    //       total_values.push_back(*nullval);
+    //     }
+    //   }
+    //   values= total_values.data();
+    //   value_num=field_num;
+    // }
     if (field_num != value_num) {
       LOG_WARN("schema mismatch. value num=%d, field num in schema=%d", value_num, field_num);
       return RC::SCHEMA_FIELD_MISSING;
