@@ -455,6 +455,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       else if (right_values_.empty()) {
         // Result of sub query is empty.
         right_value.set_null();
+        sql_debug("right hanld side is empty and cmp is :%d", comp_);
       } else {
         right_value = right_values_[0];
       }

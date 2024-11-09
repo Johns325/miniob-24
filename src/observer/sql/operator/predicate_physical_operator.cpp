@@ -46,12 +46,14 @@ RC PredicatePhysicalOperator::hand_all_sub_queries() {
     for (auto& child : conj_expr->children()) {
       if (child->type() == ExprType::COMPARISON) {
         auto cmp_expr = static_cast<ComparisonExpr*>(child.get());
-        if (cmp_expr->left()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
+        // if (cmp_expr->left()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->left().get())->break_pipeline()) {
+        if (cmp_expr->left()->type() == ExprType::SUB_QUERY ) {
           rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->left().get())->get_physical_operator(), cmp_expr->value_list(true),  true);
         }
         if (!OB_SUCC(rc))
           return rc;
-        if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
+        // if (cmp_expr->right()->type() == ExprType::SUB_QUERY && !static_cast<SubQueryExpr*>(cmp_expr->right().get())->break_pipeline()) {
+        if (cmp_expr->right()->type() == ExprType::SUB_QUERY) {
          rc = cmp_expr->handle_sub_query(static_cast<SubQueryExpr*>(cmp_expr->right().get())->get_physical_operator(), cmp_expr->value_list(false),  false);
          if (!OB_SUCC(rc))
           return rc;
@@ -229,7 +231,7 @@ RC PredicatePhysicalOperator::next()
     }
 
     if (value.get_boolean()) {
-      // sql_debug("get a tuple: %s ", tuple->to_string().c_str());
+      sql_debug("get a tuple: %s ", tuple->to_string().c_str());
       return rc;
     }
   }
