@@ -28,6 +28,7 @@ enum class Index_Type :int32_t {
 class IvfflatIndex : public Index
 {
 public:
+  void BuildIndex(std::vector<std::pair<vector<float>, RID*>> initial_data);
   IvfflatIndex(){};
   virtual ~IvfflatIndex() noexcept {};
 
@@ -51,11 +52,12 @@ public:
 
   bool is_vector_index() override { return true; }
 
-  vector<RID> ann_search(const vector<float> &base_vector, size_t limit) { return vector<RID>(); }
+  vector<RID> ann_search(const vector<float> &base_vector, size_t limit) { return ScanVectorKey(base_vector, limit); }
 
   RC close() { return RC::SUCCESS; }
 
   RC insert_entry(const char *record, const RID *rid) override { return RC::SUCCESS; };
+  
   RC delete_entry(const char *record, const RID *rid) override { return RC::SUCCESS; };
   IndexScanner *create_scanner(const char *left_key, int left_len, bool left_inclusive, const char *right_key,
       int right_len, bool right_inclusive) override {
@@ -71,4 +73,11 @@ public:
   int    lists_  = 1;
   int    probes_ = 1;
   const FieldMeta* field;
+  std::vector<std::vector<std::pair<vector<float>, RID*>>> centroids_buckets_;
+  std::vector<vector<float>> centroids_;
+public:
+  std::vector<vector<float>> RandomSample(const std::vector<std::pair<vector<float>, RID*>> &data, size_t num_samples);
+  std::vector<size_t> FindNearestCentroids(const vector<float> &base_vector, size_t num_centroids);
+  vector<RID> ScanVectorKey(const vector<float> &base_vector, size_t limit);
+  std::vector<std::pair<vector<float>, RID*>> initial_data;
 };
