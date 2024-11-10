@@ -76,6 +76,42 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       for (size_t j=0;j<fmetas.size();j++) {
         bool in_sub=false;
         for (size_t i=0;i<sub_exprs.size();i++) {
+          if (i>=value_num) {
+            Value v;
+            if (fmetas[j].nullable()) {
+              v.set_null();
+            }
+            else {
+              switch (fmetas[j].type())
+              {
+              case AttrType::BOOLEANS:
+                v.set_boolean(false);
+                break;
+              case AttrType::CHARS:
+                v.set_string("");
+                break;
+              case AttrType::DATES:
+                v.set_date(20000000);
+                break;
+              case AttrType::FLOATS:
+                v.set_float(0.0);
+                break;
+              case AttrType::INTS:
+                v.set_int(0);
+                break;
+              case AttrType::TEXTS:
+                v.set_text("");
+                break;
+              case AttrType::VECTORS:
+                v.set_vector(nullptr,0);
+                break;
+              default:
+                break;
+              }
+            }
+            total_values.push_back(v);
+            continue;
+          }
           auto sub_meta=dynamic_cast<FieldExpr*>(sub_exprs[i].get());
           if (strcmp(sub_meta->name(),fmetas[j].name())==0) {
             // total_values.erase(total_values.begin()+j);
@@ -119,7 +155,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
               break;
             }
           }
-          total_values.emplace_back(std::move(v));
+          total_values.emplace_back(v);
         }
       }
     }
@@ -135,9 +171,11 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     //     total_values.push_back(*nullval);
     //   }
     // }
-    Value* values= total_values.data();
+    Value* values= new Value[total_values.size()]();
     value_num=field_num;
-    
+    for (size_t i=0;i<total_values.size();i++) {
+      values[i]=total_values[i];
+    }
     // if (field_num != value_num) {
     //   LOG_WARN("schema mismatch. value num=%d, field num in schema=%d", value_num, field_num);
     //   return RC::SCHEMA_FIELD_MISSING;

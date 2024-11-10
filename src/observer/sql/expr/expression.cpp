@@ -242,7 +242,6 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
 // 1 stands for null is null(return true)
 // 2 stands for one of the operands is nulll and the result is false(return immediately)
 // 3 do the comparison.
-<<<<<<< HEAD
 // void ComparisonExpr::hand_null(int &val) const {
 //   ValueExpr *null_v1;
 //   ValueExpr *null_v2;
@@ -261,7 +260,6 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
 
 //   }
 // }
-=======
 void ComparisonExpr::hand_null(int &val) const {
   // ValueExpr *null_v1;
   // ValueExpr *null_v2;
@@ -280,7 +278,6 @@ void ComparisonExpr::hand_null(int &val) const {
 
   // }
 }
->>>>>>> ann
 
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
