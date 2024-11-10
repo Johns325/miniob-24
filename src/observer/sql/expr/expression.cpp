@@ -265,7 +265,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
 {
   RC  rc         = RC::SUCCESS;
 
-  // handle null
+  // handle null a is null
   if (left.attr_type() == AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
     result = comp_ == CompOp::IS_NULL;
     return RC::SUCCESS;
@@ -458,6 +458,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
         sql_debug("right hanld side is empty and cmp is :%d", comp_);
       } else {
         right_value = right_values_[0];
+        sql_debug("right hanld side return single cell :%d,%d", comp_, right_value.attr_type());
       }
     }
   } else if (right_->type() == ExprType::CONSTANT_VALUE_LIST) {
@@ -501,7 +502,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
   }
 
   bool bool_value = false;
-
+  
   rc = compare_value(left_value, right_value, bool_value);
   if (rc == RC::SUCCESS) {
     value.set_boolean(bool_value);

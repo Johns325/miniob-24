@@ -150,10 +150,12 @@ RC PredicatePhysicalOperator::simplify_comparisons() {
             continue;
           if (cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::OR)) {
             predicates_always_true_ = true;
+            sql_debug("predicate always true");
             break;
           }
           else if (!cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::AND)){
             predicates_always_false_ = true;
+            sql_debug("predicate always false");
             break;
           }
         }
@@ -196,6 +198,7 @@ RC PredicatePhysicalOperator::open(Trx *trx)
 RC PredicatePhysicalOperator::next()
 {
   if (predicates_always_false_) { // predicates are always false.
+    sql_debug("always false in PredicatePhysicalOperator::next()");
     return RC::RECORD_EOF;
   }
   RC                rc   = RC::SUCCESS;
@@ -208,6 +211,7 @@ RC PredicatePhysicalOperator::next()
       break;
     }
     if (predicates_always_true_) { //不用过滤，conditions可能返回true
+      sql_debug("always true in PredicatePhysicalOperator::next()");
       return RC::SUCCESS;
     }
     for (auto expr : expressions_to_set_each_time_) {
@@ -231,7 +235,7 @@ RC PredicatePhysicalOperator::next()
     }
 
     if (value.get_boolean()) {
-      // sql_debug("get a tuple: %s ", tuple->to_string().c_str());
+      sql_debug("get a tuple: %s ", tuple->to_string().c_str());
       return rc;
     }
   }
