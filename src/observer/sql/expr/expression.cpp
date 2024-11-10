@@ -490,11 +490,11 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       }
       if (result && comp_ == CompOp::IN_OP) {
         value.set_boolean(true);
-        return rc;
+        return RC::SUCCESS;
       }
       if (!result && comp_ == CompOp::NOT_IN) {
         value.set_boolean(false);
-        return rc;
+        return RC::SUCCESS;
       }
     }
     value.set_boolean(comp_ == CompOp::NOT_IN);

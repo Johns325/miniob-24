@@ -415,7 +415,7 @@ public:
    * 在优化的时候，可能会使用到
    */
   RC try_get_value(Value &value) const override;
-  bool is_range_comparator() const { return  comp_ == CompOp::IN_OP || comp_ == CompOp::NOT_IN;}
+  bool is_range_comparator() const { return  (comp_ == CompOp::IN_OP) || (comp_ == CompOp::NOT_IN);}
   RC handle_sub_query(PhysicalOperator*query_phy_oper , std::vector<Value>&values, bool);
   RC handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , std::vector<Value>&values, bool, Tuple*t);
   /**
