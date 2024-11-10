@@ -436,7 +436,7 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
           bound_expressions.erase(bound_expressions.begin()+i);
         }
       }
-      if (bound_expressions[i]->type()==ExprType::AGGREGATION) {
+      else if (bound_expressions[i]->type()==ExprType::AGGREGATION) {
         auto expr=dynamic_cast<AggregateExpr*> (bound_expressions[i].get());
         auto &child=expr->child();
         if (child->type()==ExprType::FIELD) {
@@ -459,6 +459,13 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
         //   bound_expressions.emplace_back(agg);
         // }
         
+      }
+      else if (bound_expressions[i]->type()==ExprType::STAR) {
+        bound_expressions.erase(bound_expressions.begin()+i);
+        for (size_t j=0;j<sub_exprs.size();j++) {
+          bound_expressions.push_back(std::move(sub_exprs[j]));
+          bound_expressions[j]->set_name(view->infos_[j]);
+        }
       }
     }
   }

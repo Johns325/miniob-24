@@ -66,19 +66,75 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     const TableMeta &table_meta = table->table_meta();
     const int        field_num  = table_meta.field_num() - table_meta.sys_field_num();
     std::vector<Value>     insert_values     = inserts.values;
-    int i=0;
-    
-    for (int j=0;j<field_num;j++) {
-      if (view->get_null_info(0,j)) {
-        total_values.push_back(insert_values[i]);
-        i++;
-      }
-      else {
-        Value* nullval=new Value();
-        nullval->set_null();
-        total_values.push_back(*nullval);
+
+    auto &sub_exprs=view->get_select()->query_expressions();
+    const std::vector<FieldMeta> fmetas=*table_meta.field_metas();
+    if (sub_exprs[0]->type()==ExprType::STAR) {
+      total_values.assign(insert_values.begin(),insert_values.end());
+    }
+    else {
+      for (size_t j=0;j<fmetas.size();j++) {
+        bool in_sub=false;
+        for (size_t i=0;i<sub_exprs.size();i++) {
+          auto sub_meta=dynamic_cast<FieldExpr*>(sub_exprs[i].get());
+          if (strcmp(sub_meta->name(),fmetas[j].name())==0) {
+            // total_values.erase(total_values.begin()+j);
+            // total_values.insert(total_values.begin()+j,insert_values[i]);
+            total_values.push_back(insert_values[i]);
+            in_sub=true;
+            break;
+          }
+        }
+        if (in_sub==false) {
+          Value v;
+          
+          if (fmetas[j].nullable()) {
+            v.set_null();
+          }
+          else {
+            switch (fmetas[j].type())
+            {
+            case AttrType::BOOLEANS:
+              v.set_boolean(false);
+              break;
+            case AttrType::CHARS:
+              v.set_string("");
+              break;
+            case AttrType::DATES:
+              v.set_date(20000000);
+              break;
+            case AttrType::FLOATS:
+              v.set_float(0.0);
+              break;
+            case AttrType::INTS:
+              v.set_int(0);
+              break;
+            case AttrType::TEXTS:
+              v.set_text("");
+              break;
+            case AttrType::VECTORS:
+              v.set_vector(nullptr,0);
+              break;
+            default:
+              break;
+            }
+          }
+          total_values.emplace_back(std::move(v));
+        }
       }
     }
+
+    // for (int j=0;j<field_num;j++) {
+    //   if (view->get_null_info(0,j)) {
+    //     total_values.push_back(insert_values[i]);
+    //     i++;
+    //   }
+    //   else {
+    //     Value* nullval=new Value();
+    //     nullval->set_null();
+    //     total_values.push_back(*nullval);
+    //   }
+    // }
     Value* values= total_values.data();
     value_num=field_num;
     
@@ -127,7 +183,8 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     // }
 
     // everything alright
-    stmt = new InsertStmt(table, values, value_num);
+    auto insert_stmt = new InsertStmt(table, values, value_num);
+    stmt = insert_stmt;
     return RC::SUCCESS;
   }
     

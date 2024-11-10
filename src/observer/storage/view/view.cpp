@@ -25,6 +25,7 @@ View::~View()
 
 RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema)
 {
+    has_schema_=has_schema;
     if (name=="") {
         LOG_WARN("Name cannot be empty");
         return RC::INVALID_ARGUMENT;
@@ -48,6 +49,7 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
     for (int i=0;i<expr_size;i++) {
         if (exprs[i]->type()==ExprType::STAR) {
             if (has_schema) {
+                
                 size_t name_i=0;
                 for (int j=0;j<table_size;j++) {
                     std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
@@ -74,6 +76,7 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
             
         }
         else if (exprs[i]->type()==ExprType::FIELD) {
+            has_schema_=has_schema;
             FieldExpr* expr=dynamic_cast<FieldExpr*>(exprs[i].get());
             Field& expr_field=expr->field();
             auto meta = expr->field().meta();

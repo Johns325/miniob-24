@@ -91,7 +91,7 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
               if (view->name_to_meta.find(field_name) == view->name_to_meta.end()) {
                 return RC::INTERNAL;
               }
-            }
+            } else if (expr->type() == ExprType::STAR) continue;
           }
         }
       }
