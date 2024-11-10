@@ -314,12 +314,12 @@ alias_stmt: // ok
   }
   | ID 
   {
-    printf("alias:%s\n", $1);
+    pntf("alias:%s\n", $1);
     $$ = $1;
   }
   | AS ID {
     $$ = $2;
-    printf("alias:%s\n", $2);
+    // printf("alias:%s\n", $2);
   }
   ;
 begin_stmt:
@@ -416,7 +416,7 @@ vi_arg_list:
   //   $$ = std::unordered_map<string, string>;
   // }
   vi_arg {
-    printf("hello\n");
+    // printf("hello\n");
     $$ = $1;
   }
   | vi_arg COMMA vi_arg_list {
@@ -442,25 +442,25 @@ distance_type:
 
 vi_arg:
   DISTANCE_T EQ distance_type {
-    printf("distance\n");
+    // printf("distance\n");
     string val = ($3 == 1 ? "l2" : ($3 == 2 ? "cosine" : "inner"));
     $$ = new std::unordered_map<string, string>;
     $$->insert({string("distance"), val});
     // delete $3;
   }
   | TYPE_T EQ IVFFLAT {
-    printf("type\n");
+    // printf("type\n");
     $$ = new std::unordered_map<string, string>;
     $$->insert({string("type"), string("ivfflat")});
     
   }
   | LISTS_T EQ NUMBER {
-    printf("list\n");
+    // printf("list\n");
     $$ = new std::unordered_map<string, string>;
     $$->insert({string("lists"), std::to_string($3)});
   }
   | PROBES_T EQ NUMBER {
-    printf("probes\n");
+    // printf("probes\n");
     $$ = new std::unordered_map<string, string>;
     $$->insert({string("probes"), std::to_string($3)});
   }
@@ -689,7 +689,7 @@ const_value_list_expr:
 
 const_value_list:
   value {
-    cout << $1->get_int() << endl;
+    ////cout << $1->get_int() << endl;
     $$ = new vector<Value*>();
     $$->emplace_back($1);
   }
@@ -832,10 +832,10 @@ select_stmt:        /*  select 语句的语法解析树*/
           selection.relations.emplace_back(*iter);
           (*iter) = nullptr;
         }
-        // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
+        // // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free($4);
-      // printf("and flag:%d\n", and_flag);
+      // // printf("and flag:%d\n", and_flag);
       selection.and_flag = and_flag;
       // where 
       if ($7 != nullptr) {
@@ -871,7 +871,7 @@ expression_list:
           YYERROR;
         }
         $1->set_alias(std::string($2));
-        printf("alias:%s\n", $2);
+        // printf("alias:%s\n", $2);
         free($2);
       }
       $$->emplace_back($1);
@@ -892,27 +892,27 @@ expression_list:
     ;
 expression:
     value {
-      cout << "value_expr\n";
+      //cout << "value_expr\n";
       $$ = new ValueExpr(*$1);
       $$->set_name(token_name(sql_string, &@$));
       delete $1;
     }
     | rel_attr {
-      cout << "field_expr\n";
+      //cout << "field_expr\n";
       RelAttrSqlNode *node = $1;
       $$ = new UnboundFieldExpr(node->relation_name, node->attribute_name);
       $$->set_name(token_name(sql_string, &@$));
       delete $1;
     }
     | '*' {
-      printf("star expression\n");
+      // printf("star expression\n");
       $$ = new StarExpr();
     }
     | expression '+' expression {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::ADD, $1, $3, sql_string, &@$);
     }
     | expression '-' expression {
-      cout << "minus\n";
+      //cout << "minus\n";
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::SUB, $1, $3, sql_string, &@$);
     }
     | expression '*' expression {
@@ -926,7 +926,7 @@ expression:
       $$->set_name(token_name(sql_string, &@$));
     }
     | '-' expression %prec UMINUS {
-      cout << "negative\n";
+      //cout << "negative\n";
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::NEGATIVE, $2, nullptr, sql_string, &@$);
     }
     
@@ -969,7 +969,7 @@ rel_attr:
     ID {
       $$ = new RelAttrSqlNode;
       $$->attribute_name = $1;
-      printf("attr_name:%s\n",$1);
+      // printf("attr_name:%s\n",$1);
       free($1);
     }
     | ID DOT ID {
@@ -990,7 +990,7 @@ rel_attr:
 relation:
     ID {
       $$ = $1;
-      printf("relation:%s\n",$1);
+      // printf("relation:%s\n",$1);
     }
     ;
 limit_opt:
@@ -1006,7 +1006,7 @@ rel_list:
   
     auto r = new rel_info;
     r->relation_name = string( $2);
-    printf("rel name:%s.\n", $2);
+    // printf("rel name:%s.\n", $2);
     if ($3) {
       r->relation_alias = std::string($3);
       free($3);
@@ -1024,7 +1024,7 @@ rel_list:
       free($4);
     }
     if ($5) {
-      printf("has on conditions\n");
+      // printf("has on conditions\n");
       r->on_conditions = $5;
     }
     $$->emplace_back(r);
@@ -1287,7 +1287,7 @@ order_by:
     ;
 order_list:
   rel_attr {
-    //std::cout << "[1]\n";
+    //std:://cout << "[1]\n";
     $$ = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;
@@ -1297,7 +1297,7 @@ order_list:
     $$->emplace_back(std::move(node));
   }
   | rel_attr COMMA order_list {
-    //std::cout << "[2]\n";
+    //std:://cout << "[2]\n";
     $$ = $3;
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;
@@ -1421,7 +1421,7 @@ order_list:
     $$->emplace_back(std::move(node));
   }
   | rel_attr ASC {
-    //std::cout << "[3]\n";
+    //std:://cout << "[3]\n";
     $$ = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;
@@ -1431,7 +1431,7 @@ order_list:
     $$->emplace_back(std::move(node));
   } 
   | rel_attr ASC COMMA order_list {
-    //std::cout << "[4]\n";
+    //std:://cout << "[4]\n";
     $$ = $4;
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;
@@ -1441,7 +1441,7 @@ order_list:
     $$->emplace($$->begin(), std::move(node));
   } 
   | rel_attr DESC {
-    //std::cout << "[5]\n";
+    //std:://cout << "[5]\n";
     $$ = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;
@@ -1449,10 +1449,10 @@ order_list:
     node.asc = false;
     delete $1;
     $$->emplace_back(std::move(node));
-    std::cout << (*$$)[0].attribute_name << '\n';
+    // std::cout << (*$$)[0].attribute_name << '\n';
   } 
   | rel_attr DESC COMMA order_list {
-    //std::cout << "[6]\n";
+    //std:://cout << "[6]\n";
     $$ = $4;
     OrderBySqlNode node; 
     node.table_name = $1->relation_name;

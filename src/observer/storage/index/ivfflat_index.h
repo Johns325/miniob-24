@@ -28,7 +28,7 @@ enum class Index_Type :int32_t {
 class IvfflatIndex : public Index
 {
 public:
-  void BuildIndex(std::vector<std::pair<vector<float>, RID>> initial_data);
+  void BuildIndex(std::vector<std::pair<vector<float>, RID>>& initial_data);
   IvfflatIndex(){};
   virtual ~IvfflatIndex() noexcept {};
 

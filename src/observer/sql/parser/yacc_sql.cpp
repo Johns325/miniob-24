@@ -1996,7 +1996,7 @@ yyreduce:
   case 30: /* alias_stmt: ID  */
 #line 316 "yacc_sql.y"
   {
-    printf("alias:%s\n", (yyvsp[0].string));
+    // printf("alias:%s\n", $1);
     (yyval.string) = (yyvsp[0].string);
   }
 #line 2003 "yacc_sql.cpp"
@@ -2006,7 +2006,7 @@ yyreduce:
 #line 320 "yacc_sql.y"
           {
     (yyval.string) = (yyvsp[0].string);
-    printf("alias:%s\n", (yyvsp[0].string));
+    // printf("alias:%s\n", $2);
   }
 #line 2012 "yacc_sql.cpp"
     break;
@@ -2103,7 +2103,7 @@ yyreduce:
   case 40: /* vi_arg_list: vi_arg  */
 #line 418 "yacc_sql.y"
          {
-    printf("hello\n");
+    // printf("hello\n");
     (yyval.str_2_str) = (yyvsp[0].str_2_str);
   }
 #line 2110 "yacc_sql.cpp"
@@ -2148,7 +2148,7 @@ yyreduce:
   case 45: /* vi_arg: DISTANCE_T EQ distance_type  */
 #line 444 "yacc_sql.y"
                               {
-    printf("distance\n");
+    // printf("distance\n");
     string val = ((yyvsp[0].number) == 1 ? "l2" : ((yyvsp[0].number) == 2 ? "cosine" : "inner"));
     (yyval.str_2_str) = new std::unordered_map<string, string>;
     (yyval.str_2_str)->insert({string("distance"), val});
@@ -2160,7 +2160,7 @@ yyreduce:
   case 46: /* vi_arg: TYPE_T EQ IVFFLAT  */
 #line 451 "yacc_sql.y"
                       {
-    printf("type\n");
+    // printf("type\n");
     (yyval.str_2_str) = new std::unordered_map<string, string>;
     (yyval.str_2_str)->insert({string("type"), string("ivfflat")});
     
@@ -2171,7 +2171,7 @@ yyreduce:
   case 47: /* vi_arg: LISTS_T EQ NUMBER  */
 #line 457 "yacc_sql.y"
                       {
-    printf("list\n");
+    // printf("list\n");
     (yyval.str_2_str) = new std::unordered_map<string, string>;
     (yyval.str_2_str)->insert({string("lists"), std::to_string((yyvsp[0].number))});
   }
@@ -2181,7 +2181,7 @@ yyreduce:
   case 48: /* vi_arg: PROBES_T EQ NUMBER  */
 #line 462 "yacc_sql.y"
                        {
-    printf("probes\n");
+    // printf("probes\n");
     (yyval.str_2_str) = new std::unordered_map<string, string>;
     (yyval.str_2_str)->insert({string("probes"), std::to_string((yyvsp[0].number))});
   }
@@ -2526,7 +2526,7 @@ yyreduce:
   case 81: /* const_value_list: value  */
 #line 691 "yacc_sql.y"
         {
-    cout << (yyvsp[0].value)->get_int() << endl;
+    ////cout << $1->get_int() << endl;
     (yyval.const_value_list_type) = new vector<Value*>();
     (yyval.const_value_list_type)->emplace_back((yyvsp[0].value));
   }
@@ -2722,10 +2722,10 @@ yyreduce:
           selection.relations.emplace_back(*iter);
           (*iter) = nullptr;
         }
-        // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
+        // // printf("size:%ld.%s\n",selection.relations.size(),selection.relations[0].relation_name.c_str());
       }
       free((yyvsp[-7].string));
-      // printf("and flag:%d\n", and_flag);
+      // // printf("and flag:%d\n", and_flag);
       selection.and_flag = and_flag;
       // where 
       if ((yyvsp[-4].condition_list) != nullptr) {
@@ -2764,7 +2764,7 @@ yyreduce:
           YYERROR;
         }
         (yyvsp[-1].expression)->set_alias(std::string((yyvsp[0].string)));
-        printf("alias:%s\n", (yyvsp[0].string));
+        // printf("alias:%s\n", $2);
         free((yyvsp[0].string));
       }
       (yyval.expression_list)->emplace_back((yyvsp[-1].expression));
@@ -2792,7 +2792,7 @@ yyreduce:
   case 100: /* expression: value  */
 #line 894 "yacc_sql.y"
           {
-      cout << "value_expr\n";
+      //cout << "value_expr\n";
       (yyval.expression) = new ValueExpr(*(yyvsp[0].value));
       (yyval.expression)->set_name(token_name(sql_string, &(yyloc)));
       delete (yyvsp[0].value);
@@ -2803,7 +2803,7 @@ yyreduce:
   case 101: /* expression: rel_attr  */
 #line 900 "yacc_sql.y"
                {
-      cout << "field_expr\n";
+      //cout << "field_expr\n";
       RelAttrSqlNode *node = (yyvsp[0].rel_attr);
       (yyval.expression) = new UnboundFieldExpr(node->relation_name, node->attribute_name);
       (yyval.expression)->set_name(token_name(sql_string, &(yyloc)));
@@ -2815,7 +2815,7 @@ yyreduce:
   case 102: /* expression: '*'  */
 #line 907 "yacc_sql.y"
           {
-      printf("star expression\n");
+      // printf("star expression\n");
       (yyval.expression) = new StarExpr();
     }
 #line 2822 "yacc_sql.cpp"
@@ -2832,7 +2832,7 @@ yyreduce:
   case 104: /* expression: expression '-' expression  */
 #line 914 "yacc_sql.y"
                                 {
-      cout << "minus\n";
+      //cout << "minus\n";
       (yyval.expression) = create_arithmetic_expression(ArithmeticExpr::Type::SUB, (yyvsp[-2].expression), (yyvsp[0].expression), sql_string, &(yyloc));
     }
 #line 2839 "yacc_sql.cpp"
@@ -2866,7 +2866,7 @@ yyreduce:
   case 108: /* expression: '-' expression  */
 #line 928 "yacc_sql.y"
                                   {
-      cout << "negative\n";
+      //cout << "negative\n";
       (yyval.expression) = create_arithmetic_expression(ArithmeticExpr::Type::NEGATIVE, (yyvsp[0].expression), nullptr, sql_string, &(yyloc));
     }
 #line 2873 "yacc_sql.cpp"
@@ -2937,7 +2937,7 @@ yyreduce:
        {
       (yyval.rel_attr) = new RelAttrSqlNode;
       (yyval.rel_attr)->attribute_name = (yyvsp[0].string);
-      printf("attr_name:%s\n",(yyvsp[0].string));
+      // printf("attr_name:%s\n",$1);
       free((yyvsp[0].string));
     }
 #line 2944 "yacc_sql.cpp"
@@ -2970,7 +2970,7 @@ yyreduce:
 #line 991 "yacc_sql.y"
        {
       (yyval.string) = (yyvsp[0].string);
-      printf("relation:%s\n",(yyvsp[0].string));
+      // printf("relation:%s\n",$1);
     }
 #line 2976 "yacc_sql.cpp"
     break;
@@ -3002,7 +3002,7 @@ yyreduce:
   
     auto r = new rel_info;
     r->relation_name = string( (yyvsp[-2].string));
-    printf("rel name:%s.\n", (yyvsp[-2].string));
+    // printf("rel name:%s.\n", $2);
     if ((yyvsp[-1].string)) {
       r->relation_alias = std::string((yyvsp[-1].string));
       free((yyvsp[-1].string));
@@ -3025,7 +3025,7 @@ yyreduce:
       free((yyvsp[-2].string));
     }
     if ((yyvsp[-1].condition_list)) {
-      printf("has on conditions\n");
+      // printf("has on conditions\n");
       r->on_conditions = (yyvsp[-1].condition_list);
     }
     (yyval.rel_list_type)->emplace_back(r);
@@ -3444,7 +3444,7 @@ yyreduce:
   case 172: /* order_list: rel_attr  */
 #line 1289 "yacc_sql.y"
            {
-    //std::cout << "[1]\n";
+    //std:://cout << "[1]\n";
     (yyval.order_by_list) = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = (yyvsp[0].rel_attr)->relation_name;
@@ -3459,7 +3459,7 @@ yyreduce:
   case 173: /* order_list: rel_attr COMMA order_list  */
 #line 1299 "yacc_sql.y"
                               {
-    //std::cout << "[2]\n";
+    //std:://cout << "[2]\n";
     (yyval.order_by_list) = (yyvsp[0].order_by_list);
     OrderBySqlNode node; 
     node.table_name = (yyvsp[-2].rel_attr)->relation_name;
@@ -3618,7 +3618,7 @@ yyreduce:
   case 180: /* order_list: rel_attr ASC  */
 #line 1423 "yacc_sql.y"
                  {
-    //std::cout << "[3]\n";
+    //std:://cout << "[3]\n";
     (yyval.order_by_list) = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = (yyvsp[-1].rel_attr)->relation_name;
@@ -3633,7 +3633,7 @@ yyreduce:
   case 181: /* order_list: rel_attr ASC COMMA order_list  */
 #line 1433 "yacc_sql.y"
                                   {
-    //std::cout << "[4]\n";
+    //std:://cout << "[4]\n";
     (yyval.order_by_list) = (yyvsp[0].order_by_list);
     OrderBySqlNode node; 
     node.table_name = (yyvsp[-3].rel_attr)->relation_name;
@@ -3648,7 +3648,7 @@ yyreduce:
   case 182: /* order_list: rel_attr DESC  */
 #line 1443 "yacc_sql.y"
                   {
-    //std::cout << "[5]\n";
+    //std:://cout << "[5]\n";
     (yyval.order_by_list) = new vector<OrderBySqlNode>();
     OrderBySqlNode node; 
     node.table_name = (yyvsp[-1].rel_attr)->relation_name;
@@ -3656,7 +3656,7 @@ yyreduce:
     node.asc = false;
     delete (yyvsp[-1].rel_attr);
     (yyval.order_by_list)->emplace_back(std::move(node));
-    std::cout << (*(yyval.order_by_list))[0].attribute_name << '\n';
+    // std::cout << (*$$)[0].attribute_name << '\n';
   }
 #line 3662 "yacc_sql.cpp"
     break;
@@ -3664,7 +3664,7 @@ yyreduce:
   case 183: /* order_list: rel_attr DESC COMMA order_list  */
 #line 1454 "yacc_sql.y"
                                    {
-    //std::cout << "[6]\n";
+    //std:://cout << "[6]\n";
     (yyval.order_by_list) = (yyvsp[0].order_by_list);
     OrderBySqlNode node; 
     node.table_name = (yyvsp[-3].rel_attr)->relation_name;
