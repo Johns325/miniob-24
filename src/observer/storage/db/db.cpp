@@ -164,7 +164,7 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   return RC::SUCCESS;
 }
 
-RC Db::create_view(const char *view_name, SelectStmt *select_stmt,std::vector<AttrInfoSqlNode> &infos,bool has_schema)
+RC Db::create_view(const char *view_name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema)
 {
   RC rc = RC::SUCCESS;
   if (opened_views_.count(view_name)!=0) {
@@ -238,7 +238,7 @@ Table *Db::find_table(int32_t table_id) const
 
 View *Db::find_view(const char *view_name) const
 {
-  unordered_map<string, View *>::const_iterator iter = opened_views_.find(view_name);
+  unordered_map<string, View *>::const_iterator iter = opened_views_.find(string(view_name));
   if (iter != opened_views_.end()) {
     return iter->second;
   }

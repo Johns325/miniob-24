@@ -32,7 +32,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
         db, table_name, static_cast<int>(inserts.values.size()));
     return RC::INVALID_ARGUMENT;
   }
-
+  std::vector<Value> total_values;
   // check whether the table exists
   View *view=db->find_view(table_name);
   Table *table = db->find_table(table_name);
@@ -54,14 +54,20 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     //   return RC::INVALID_ARGUMENT;
     // }
     // check the fields number
-    
+    if (view->has_schema()==false) {
+      Value     *values     = inserts.values.data();
+      int        value_num  = static_cast<int>(inserts.values.size());
+      stmt = new InsertStmt(table, values, value_num);
+      return RC::SUCCESS;
+
+    }
     //Value     *values     = inserts.values.data();
-    /*int        value_num  = static_cast<int>(inserts.values.size());
+    int        value_num  = static_cast<int>(inserts.values.size());
     const TableMeta &table_meta = table->table_meta();
     const int        field_num  = table_meta.field_num() - table_meta.sys_field_num();
     std::vector<Value>     insert_values     = inserts.values;
     int i=0;
-    std::vector<Value> total_values;
+    
     for (int j=0;j<field_num;j++) {
       if (view->get_null_info(0,j)) {
         total_values.push_back(insert_values[i]);
@@ -74,7 +80,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       }
     }
     Value* values= total_values.data();
-    //int value_num=field_num;
+    value_num=field_num;
     
     // if (field_num != value_num) {
     //   LOG_WARN("schema mismatch. value num=%d, field num in schema=%d", value_num, field_num);
@@ -122,7 +128,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
 
     // everything alright
     stmt = new InsertStmt(table, values, value_num);
-    return RC::SUCCESS;*/
+    return RC::SUCCESS;
   }
     
     

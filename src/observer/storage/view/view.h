@@ -23,18 +23,20 @@ public:
    * @param name 视图名
    * @param select_stmt 包含的select语句
    */
-    RC create(Db *db,string name,SelectStmt *select_stmt,std::vector<AttrInfoSqlNode> &infos,bool has_schema);
+    RC create(Db *db,string name,SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema);
     SelectStmt *get_select() {return select_stmt_;};
     string name(){return name_;};
     std::vector<Table*> &get_tables() {return tables_;}
     bool onetable() {return is_one_table;}
     bool get_null_info(int i,int j) {return null_info_[i][j];}
+    bool has_schema() {return has_schema_;}
 private:
     Db *db_=nullptr;
     SelectStmt *select_stmt_=nullptr;
     string name_;
     std::vector<Table*> tables_;
     bool is_one_table=false;
+    bool has_schema_=false;
     std::vector<std::vector<FieldMeta>> fieldmetas_;
     std::vector<std::vector<bool>> null_info_;
     std::unordered_map<std::string,FieldMeta> name_to_meta;

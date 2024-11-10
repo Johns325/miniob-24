@@ -159,6 +159,7 @@ static int and_flag  = 1;
   std::vector<Expression*> *                 condition_list;
   std::vector<RelAttrSqlNode> *              rel_attr_list;
   std::vector<std::string> *                 relation_list;
+  std::vector<std::string> *                 view_id_list;
   char *                                     string;
   int                                        number;
   float                                      floats;
@@ -190,6 +191,8 @@ static int and_flag  = 1;
 %type <number>              number
 %type <number>              null_def
 %type <string>              relation
+%type <string>              view_id
+%type <view_id_list>        view_id_list
 %type <boolean>             and_clause
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
@@ -559,23 +562,20 @@ create_view_stmt:
     view.query = $5;
     view.has_schema=false;
   }
-  | CREATE VIEW ID LBRACE attr_def attr_def_list RBRACE as_stmt  select_stmt {
+  | CREATE VIEW ID LBRACE view_id_list RBRACE as_stmt  select_stmt {
     $$ = new ParsedSqlNode(SCF_CREATE_VIEW);
     auto &view = $$->create_view;
     view.view_name =string($3);
     free($3);
-    std::vector<AttrInfoSqlNode> *src_attrs = $6;
-
-      if (src_attrs != nullptr) {
-        create_view.attr_infos.swap(*src_attrs);
-        delete src_attrs;
-      }
-      create_view.attr_infos.emplace_back(*$5);
-      std::reverse(create_view.attr_infos.begin(), create_view.attr_infos.end());
-      delete $5;
-    view.query = $9;
+    std::vector<std::string> *src_attrs = $5;
+    if (src_attrs != nullptr) {
+      view.infos.swap(*src_attrs);
+      delete src_attrs;
+    }
+    //std::reverse(view.infos.begin(), view.infos.end());
+    view.query = $8;
     view.has_schema=true;
-  }
+  };
 as_stmt: //ok
   /* empty */
   {
@@ -713,6 +713,16 @@ const_value_list:
   }
   | value COMMA const_value_list {
     $$ = $3;
+    $$->emplace_back($1);
+  }
+  ;
+view_id_list:
+  view_id {
+    $$=new vector<std::string>();
+    $$->emplace_back($1);
+  }
+  | view_id COMMA view_id_list {
+    $$=$3;
     $$->emplace_back($1);
   }
   ;
@@ -1004,7 +1014,10 @@ rel_attr:
       free($1);
     }
     ;
-
+view_id:
+    ID {
+      $$=$1;
+    }
 relation:
     ID {
       $$ = $1;

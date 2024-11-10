@@ -21,7 +21,7 @@ View::~View()
     tables_.clear();
 }
 
-RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<AttrInfoSqlNode> &infos,bool has_schema)
+RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema)
 {
     if (name=="") {
         LOG_WARN("Name cannot be empty");
@@ -44,12 +44,13 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<AttrInf
     for (int i=0;i<expr_size;i++) {
         if (exprs[i]->type()==ExprType::STAR) {
             if (has_schema) {
+                has_schema_=true;
                 size_t name_i=0;
                 for (int j=0;j<table_size;j++) {
                     std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
                     fieldmetas_.push_back(fmetas);
                     for (size_t k=0;k<fmetas.size();k++) {
-                        string name=infos[name_i].name;
+                        string name=infos[name_i];
                         name_to_meta.insert({name,fmetas[k]});
                         name_i++;
                     } 
@@ -73,8 +74,9 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<AttrInf
                 if (strcmp(expr_field.table_name(),tables_[j]->name())==0) {
                     fieldmetas_[j].push_back(*expr_field.meta());
                     if (has_schema) {
+                        has_schema_=true;
                         const FieldMeta* fm=expr_field.meta();
-                        name_to_meta.insert({infos[name_i].name,*fm});
+                        name_to_meta.insert({infos[name_i],*fm});
                     }
                 }
             }
