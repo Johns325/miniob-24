@@ -477,10 +477,11 @@ RC Table::create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt) {
     LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", name(), index_name, strrc(rc));
     return rc;
   }
-
+  ASSERT(stmt.field_metas_.size() == 1, "currently we only consider create view index on single column");
+  auto field_meta = stmt.field_metas_[0];
   Record record;
   while (OB_SUCC(rc = scanner.next(record))) {
-  rc = index->insert_entry(record.data(), &record.rid());
+  rc = index->insert_entry(record.data() + field_meta->offset(), &record.rid());
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",name(), index_name, strrc(rc));
       return rc;
