@@ -102,7 +102,7 @@ private:
   bool break_pipeline_{false};            // the same thing as using_outer_field_;
 
 public:
-  int limit;
+  // int limit;
   bool is_view_=false;
   int limit{-1};
 };

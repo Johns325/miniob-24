@@ -62,6 +62,13 @@ enum class CompOp :int32_t
   NO_OP,
 };
 
+enum class Distance_Type:int32_t {
+  INVALID = 0,
+  L2_DISTANCE = 1,
+  COSINE_DISTANCE,
+  INNER_PRODUCT,
+};
+
 /**
  * @brief 表示一个条件比较
  * @ingroup SQLParser

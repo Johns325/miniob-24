@@ -42,7 +42,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/stmt.h"
 #include "sql/expr/expression.h"
 #include "sql/expr/expression_iterator.h"
-
+#include "storage/table/table.h"
+#include "sql/operator/ivfflat_index_logical_operator.h"
 using namespace std;
 using namespace common;
 
@@ -128,6 +129,24 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 {
   unique_ptr<LogicalOperator> *last_oper = nullptr;
   RC rc{RC::SUCCESS};
+  if (select_stmt->order_by_stmt != nullptr) {
+    // check do we need convert order by + limit to vector index
+    if (select_stmt->order_by_stmt->units().size() == 1) {
+      auto& unit = select_stmt->order_by_stmt->units()[0];
+      if (unit->field_->type() == AttrType::VECTORS && unit->distance_type_ != 0 && -1 != select_stmt->limit) { //排序里面只有一个条件并且排序的字段类型是vetor 并且distance type不为0，进一步limit不为-1.
+        // 进一步判断是否有该Vetor类型 列 对应的倒排索引
+        auto index = unit->table_->ivfflat_index(unit->field_);
+        if (index != nullptr) {
+          auto order_by_spec = unit.release();
+          auto index_oper = std::unique_ptr<LogicalOperator>(new IvfflatLogicalOperator(order_by_spec, select_stmt->limit));
+          auto project_oper = make_unique<ProjectLogicalOperator>(std::move(select_stmt->query_expressions()), select_stmt->limit);
+          project_oper->add_child(std::move(index_oper));
+          logical_operator = std::move(project_oper);
+          return RC::SUCCESS;
+        }
+      }
+    }
+  }
   unique_ptr<LogicalOperator> table_oper(nullptr);
   last_oper = &table_oper;
 
@@ -203,7 +222,6 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
   unique_ptr<LogicalOperator> order_by_oper;
   if (select_stmt->order_by_stmt != nullptr) {
-    // chece do we need convert order by + limit to vector index
     rc = create(select_stmt->order_by_stmt, order_by_oper);
     if (OB_FAIL(rc)) {
       LOG_WARN("failed to create group by logical plan. rc=%s", strrc(rc));

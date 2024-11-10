@@ -66,6 +66,19 @@ RC VectorType::multiply(const Value &left, const Value &right, Value &result) co
   return RC::SUCCESS;
 }
 
+RC VectorType::divide(const Value &left, const Value &right, Value &result) const
+{
+  ASSERT(left.attr_type() == AttrType::VECTORS, "left type is not vector");
+  float *value = new float[left.length_/4];
+  for(int i = 0; i < left.length_/4 ;i++) {
+    value[i] = left.value_.vector_value_[i] / right.value_.int_value_;
+    value[i] = round(value[i] * 100) / 100;
+  }
+  result.set_vector(value, left.length_);
+  delete[] value;
+  return RC::SUCCESS;
+}
+
 RC VectorType::to_string(const Value &val, string &result) const
 {
   stringstream ss;
