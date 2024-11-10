@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/aggregator.h"
 #include "storage/common/chunk.h"
 #include "sql/stmt/select_stmt.h"
+#include "event/sql_debug.h"
 // #include "sql/operator/physical_operator.h"
 // #include "sql/operator/logical_operator.h"
 
@@ -323,6 +324,9 @@ public:
     expressions_.insert(expressions_.end(), expr.begin(), expr.end());
   }
   void hand_expressions(Tuple *t) {
+    if (!expressions_.empty()) {
+      sql_debug("expressions are not empty");
+    }
     for (auto expr : expressions_) {
       if (expr->type() == ExprType::FIELD) {
         static_cast<FieldExpr*>(expr)->put_tuple(t);

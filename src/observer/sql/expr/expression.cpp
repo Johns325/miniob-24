@@ -268,6 +268,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
   // handle null a is null
   if (left.attr_type() == AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
     result = comp_ == CompOp::IS_NULL;
+  sql_debug("both are null");
     return RC::SUCCESS;
   } else if (left.attr_type() == AttrType::NULLS || right.attr_type() == AttrType::NULLS) {
     // 其中一个结果是null。结果为true当且仅当comp_ == IS_NOT_NULL
@@ -385,6 +386,7 @@ RC ComparisonExpr::handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , s
   TupleSchema schema;
   PhysicalOperator*query_phy_oper = expr->get_physical_operator();
   expr->hand_expressions(t);
+  
   query_phy_oper->tuple_schema(schema);
   if (schema.cell_num() > 1) {
     return RC::SUB_QUERY_RETURNS_MULTIPLE_COLUMNS;
@@ -458,7 +460,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
         sql_debug("right hanld side is empty and cmp is :%d", comp_);
       } else {
         right_value = right_values_[0];
-        sql_debug("right hanld side return single cell :%d,%d", comp_, right_value.attr_type());
+        // sql_debug("right hanld side return single cell :%d,%d", comp_, right_value.attr_type());
       }
     }
   } else if (right_->type() == ExprType::CONSTANT_VALUE_LIST) {
