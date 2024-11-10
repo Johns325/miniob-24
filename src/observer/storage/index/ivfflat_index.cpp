@@ -201,4 +201,9 @@ vector<RID> IvfflatIndex::ScanVectorKey(const vector<float> &base_vector, size_t
     return global_result;  // 返回最终的最近邻居的 RID 列表
 }
 
+void IvfflatIndex::InsertVectorEntry(const std::vector<float> key, RID rid) {
+  size_t nearest_centroid_idx = FindCentroid(key, centroids_, distance_type_);
+  centroids_buckets_[nearest_centroid_idx].emplace_back(key,rid);
+} 
+
   

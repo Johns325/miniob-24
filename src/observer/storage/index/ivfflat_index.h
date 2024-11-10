@@ -66,6 +66,7 @@ public:
       }
   RC sync() override { return RC::SUCCESS; };
 
+  void InsertVectorEntry(const std::vector<float> key, RID rid) ;
 public:
   bool   inited_ {false};
   Table *table_  {nullptr};
