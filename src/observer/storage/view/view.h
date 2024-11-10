@@ -16,6 +16,7 @@ class FieldMeta;
 class View
 {
 public:
+    friend class Stmt;
     View()=default;
     ~View();
    /**
@@ -39,5 +40,6 @@ private:
     bool has_schema_=false;
     std::vector<std::vector<FieldMeta>> fieldmetas_;
     std::vector<std::vector<bool>> null_info_;
+public:
     std::unordered_map<std::string,FieldMeta> name_to_meta;
 };

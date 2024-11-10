@@ -57,9 +57,15 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
                 }
             }
             else {
+                size_t name_i=0;
                 for (int j=0;j<table_size;j++) {
                     std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
                     fieldmetas_.push_back(fmetas);
+                    for (size_t k=0;k<fmetas.size();k++) {
+                        string name=infos[name_i];
+                        name_to_meta.insert({name,fmetas[k]});
+                        name_i++;
+                    }
                 }
             }
             
@@ -73,10 +79,14 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
                 fieldmetas_.push_back(fs);
                 if (strcmp(expr_field.table_name(),tables_[j]->name())==0) {
                     fieldmetas_[j].push_back(*expr_field.meta());
+                    const FieldMeta* fm=expr_field.meta();
+                    name_to_meta.insert({infos[name_i],*fm});
+                    name_i++;
                     if (has_schema) {
                         has_schema_=true;
-                        const FieldMeta* fm=expr_field.meta();
-                        name_to_meta.insert({infos[name_i],*fm});
+                    }
+                    else {
+                        has_schema_=false;
                     }
                 }
             }

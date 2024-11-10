@@ -35,6 +35,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/update_stmt.h"
 #include "sql/parser/expression_binder.h"
 #include "create_view_stmt.h"
+#include "storage/db/db.h"
 bool stmt_type_ddl(StmtType type)
 {
   switch (type) {
@@ -62,6 +63,28 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
     }
     case SCF_SELECT: {
       db->col_references.clear();
+      if (sql_node.selection.relations.size() == 1) {
+        auto rel_info = sql_node.selection.relations[0];
+        auto view = db->find_view(rel_info->relation_name.c_str());
+        if (view != nullptr) {
+          // select by view
+          for (auto &expr: sql_node.selection.expressions) {
+            if (expr->type() == ExprType::UNBOUND_FIELD) {
+              auto unbound_expr = static_cast<UnboundFieldExpr*>(expr.get());
+              auto field_name = string(unbound_expr->name());
+              if (view->name_to_meta.find(field_name) == view->name_to_meta.end()) {
+                return RC::INTERNAL;
+              }
+            } else if (expr->type() == ExprType::UNBOUND_AGGREGATION) {
+              auto aggre_expr = static_cast<UnboundAggregateExpr*>(expr.get());
+              auto field_name = string(aggre_expr->child()->name());
+              if (view->name_to_meta.find(field_name) == view->name_to_meta.end()) {
+                return RC::INTERNAL;
+              }
+            }
+          }
+        }
+      }
       return SelectStmt::create(db, sql_node.selection, stmt, nullptr);
     }
 

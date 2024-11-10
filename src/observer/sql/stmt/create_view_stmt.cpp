@@ -19,6 +19,11 @@ RC CreateViewStmt::create(Db *db, const CreateViewSqlNode &create_view, Stmt *&s
     return RC::SUCCESS;
   }
   std::vector<std::string> infos;
+  auto& exprs=ss->query_expressions();
+  for (int i=0;i<exprs.size();i++) {
+    string name=string(exprs[i]->name());
+    infos.push_back(name);
+  }
   stmt = new CreateViewStmt(create_view.view_name,ss,std::move(infos),create_view.has_schema);
   //sql_debug("create view statement: view name %s", create_view.view_name.c_str());
   //delete s;
