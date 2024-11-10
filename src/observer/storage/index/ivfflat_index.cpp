@@ -20,6 +20,10 @@ float ComputeDistance(const std::vector<float> &left, const std::vector<float> &
     case 1: {
       // IMPLEMENT ME
       float distance = 0.0;
+      int a = left.size();
+      int b = right.size();
+      (void)a;
+      (void)b;
       assert(left.size() == right.size());
       for(std::size_t i = 0; i < left.size(); i++) {
         distance += pow(left[i] - right[i], 2);

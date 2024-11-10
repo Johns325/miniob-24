@@ -31,4 +31,5 @@ public:
   RC inner_product(const Value &left, const Value &right, Value &result) const;
   RC cosine_distance(const Value &left, const Value &right, Value &result) const;
   RC to_string(const Value &val, string &result) const override;
+  RC divide(const Value &left, const Value &right, Value &result) const override;
 };

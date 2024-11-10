@@ -5,7 +5,11 @@
 RC IvfflatPhysicalOperator::open(Trx*trx) {
   auto index = unit_->table_->ivfflat_index(unit_->field_);
   ASSERT(index != nullptr, "ivfflat index shall be null");
-  rids_ = index->ann_search(unit_->base_vector_, limit_);
+  auto n = unit_->base_vector_.length() / 4;
+  (void)n;
+  vector<float> v(unit_->base_vector_.length() / 4);
+  memcpy(v.data(), (char*)unit_->base_vector_.get_vector(), unit_->base_vector_.length());
+  rids_ = index->ann_search(v, limit_);
   return RC::SUCCESS;
 }
 
