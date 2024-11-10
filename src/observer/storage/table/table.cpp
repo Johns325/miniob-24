@@ -480,7 +480,7 @@ RC Table::create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt) {
   ASSERT(stmt.field_metas_.size() == 1, "currently we only consider create view index on single column");
   auto field_meta = stmt.field_metas_[0];
   Record record;
-  std::vector<std::pair<vector<float>, RID*>> initial_data;
+  std::vector<std::pair<vector<float>, RID>> initial_data;
   while (OB_SUCC(rc = scanner.next(record))) {
         int64_t offset = *(int64_t*)(record.data() + field_meta->offset());
         int64_t length = *(int64_t*)(record.data() + field_meta->offset() + sizeof(int64_t));
@@ -493,7 +493,7 @@ RC Table::create_vector_index(Trx *trx, CreateVectorIndexStmt &stmt) {
         float c = v[2];
         float sum = a +b +c;
         (void)sum;
-        initial_data.push_back({v, & record.rid()});
+        initial_data.push_back({v,record.rid()});
     if (rc != RC::SUCCESS) {  
       LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",name(), index_name, strrc(rc));
       return rc;

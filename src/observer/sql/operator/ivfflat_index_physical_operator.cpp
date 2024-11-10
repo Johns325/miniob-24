@@ -6,6 +6,7 @@ RC IvfflatPhysicalOperator::open(Trx*trx) {
   auto index = unit_->table_->ivfflat_index(unit_->field_);
   ASSERT(index != nullptr, "ivfflat index shall be null");
   auto n = unit_->base_vector_.length() / 4;
+  current_tuple_.set_schema(unit_->table_, unit_->table_->table_meta().field_metas());
   (void)n;
   vector<float> v(unit_->base_vector_.length() / 4);
   memcpy(v.data(), (char*)unit_->base_vector_.get_vector(), unit_->base_vector_.length());
@@ -19,7 +20,8 @@ RC IvfflatPhysicalOperator::next() {
   if (index_ == rids_.size()) {
     return RC::RECORD_EOF;
   }
-  unit_->table_->get_record(*rids_[index_], current_record_);
+  unit_->table_->get_record(rids_[index_], current_record_);
+  // current_tuple_.table_ = unit_->table_;
   current_tuple_.set_record(&current_record_);
   ++index_;
   return RC::SUCCESS;

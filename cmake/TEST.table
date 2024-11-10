@@ -1,0 +1,41 @@
+{
+	"fields" : 
+	[
+		{
+			"FIELD_id" : 0,
+			"len" : 4,
+			"name" : "ID",
+			"offset" : 0,
+			"type" : "ints",
+			"visible" : true
+		},
+		{
+			"FIELD_id" : 1,
+			"len" : 12,
+			"name" : "C1",
+			"offset" : 4,
+			"type" : "vectors",
+			"visible" : true
+		},
+		{
+			"FIELD_id" : 2,
+			"len" : 12,
+			"name" : "C2",
+			"offset" : 16,
+			"type" : "vectors",
+			"visible" : true
+		},
+		{
+			"FIELD_id" : 3,
+			"len" : 16,
+			"name" : "C3",
+			"offset" : 28,
+			"type" : "vectors",
+			"visible" : true
+		}
+	],
+	"indexes" : null,
+	"storage_format" : 1,
+	"table_id" : 1,
+	"table_name" : "TEST"
+}

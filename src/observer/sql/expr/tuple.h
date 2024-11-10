@@ -296,8 +296,7 @@ public:
   Record &record() { return *record_; }
 
   const Record &record() const { return *record_; }
-
-private:
+  public:
   const Table             *table_  = nullptr;
   Record                  *record_ = nullptr;
   bool                     own_record_ = false;
