@@ -50,7 +50,9 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/create_select_logical_operator.h"
 #include "sql/operator/create_select_physical_operator.h"
 #include "storage/index/ivfflat_index.h"
-
+#include "sql/operator/ivfflat_index_logical_operator.h"
+#include "sql/operator/ivfflat_index_physical_operator.h"
+#include "event/sql_debug.h"
 using namespace std;
 
 RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<PhysicalOperator> &oper)
@@ -101,6 +103,11 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
       return create_plan(static_cast<JoinLogicalOperator &>(logical_operator), oper);
     } break;
 
+    case LogicalOperatorType::IVFFLAT_INDEX: {
+      return create_plan(static_cast<IvfflatLogicalOperator&>(logical_operator), oper);
+    } break;
+
+
     case LogicalOperatorType::GROUP_BY: {
       return create_plan(static_cast<GroupByLogicalOperator &>(logical_operator), oper);
     } break;
@@ -135,6 +142,10 @@ RC PhysicalPlanGenerator::create_vec(LogicalOperator &logical_operator, unique_p
     }
   }
   return rc;
+}
+RC PhysicalPlanGenerator::create_plan(IvfflatLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper) {
+  oper.reset(new IvfflatPhysicalOperator(logical_oper.unit_, logical_oper.limit_));
+  return RC::SUCCESS;
 }
 
 
@@ -429,7 +440,7 @@ RC PhysicalPlanGenerator::create_plan(ExplainLogicalOperator &explain_oper, uniq
        Table *table = dynamic_cast<TableScanPhysicalOperator*>(order_ptr->children()[0].get())->table_;
                
         for(auto ivff:table->vector_index_) {
-          if(ivff->field->name() == field->name() && (int)ivff->distance_type_ == order_ptr->units_[0]->distance_type_)
+          if(strcmp( ivff->field->name(), field->name()) == 0 && (int)ivff->distance_type_ == order_ptr->units_[0]->distance_type_)
           explain_physical_oper->children()[0]->children()[0] = std::make_unique<IndexScanPhysicalOperator>(table, ivff, PhysicalOperatorType::VECTOR_INDEX_SCAN);
         } 
       }

@@ -52,6 +52,7 @@ enum class PhysicalOperatorType
   DELETE,
   INSERT,
   UPDATE,
+  IVFFLAT_INDEX_SCAN,
   SCALAR_GROUP_BY,
   HASH_GROUP_BY,
   GROUP_BY_VEC,

@@ -436,6 +436,15 @@ RC Table::get_record_scanner(RecordFileScanner &scanner, Trx *trx, ReadWriteMode
   return rc;
 }
 
+IvfflatIndex * Table::ivfflat_index(const FieldMeta* meta) {
+  for (auto v_index : vector_index_) {
+    if (meta == v_index->field) {
+      return v_index;
+    }
+  }
+  return nullptr;
+}
+
 RC Table::get_chunk_scanner(ChunkFileScanner &scanner, Trx *trx, ReadWriteMode mode)
 {
   RC rc = scanner.open_scan_chunk(this, *data_buffer_pool_, db_->log_handler(), mode);

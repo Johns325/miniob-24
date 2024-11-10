@@ -252,7 +252,7 @@ RC NestedLoopJoinPhysicalOperator::next() {
         }
         // now we can make a comparison.
       } else if (left->type() == ExprType::FIELD && right->type() == ExprType::VALUE) {
-        int index;
+        int index{0};
         auto left_field = static_cast<FieldExpr*>(left.get());
         TupleCellSpec spec(left_field->field().table_name(), left_field->field().field_name());
         TupleSchema * schema = left_->schema();
@@ -265,7 +265,7 @@ RC NestedLoopJoinPhysicalOperator::next() {
         }
         static_cast<ValueExpr*>(right.get())->get_value(right_val);
       } else if (left->type() == ExprType::VALUE && right->type() == ExprType::FIELD) {
-        int index;
+        int index{0};
         auto field = static_cast<FieldExpr*>(right.get());
         TupleCellSpec spec(field->field().table_name(), field->field().field_name());
         TupleSchema * schema = left_->schema();

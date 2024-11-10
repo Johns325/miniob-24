@@ -243,22 +243,22 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
 // 2 stands for one of the operands is nulll and the result is false(return immediately)
 // 3 do the comparison.
 void ComparisonExpr::hand_null(int &val) const {
-  ValueExpr *null_v1;
-  ValueExpr *null_v2;
-  if (left_->type() == ExprType::VALUE && static_cast<ValueExpr*>(left_.get())->value_type() == AttrType::NULLS) {
-    null_v1 = static_cast<ValueExpr*>(left_.get());
-  }
-  if (right_->type() == ExprType::VALUE && static_cast<ValueExpr*>(right_.get())->value_type() == AttrType::NULLS) {
-    null_v2 = static_cast<ValueExpr*>(right_.get());
-  }
-  if (null_v1 && null_v2) {
-    if (comp_ == CompOp::IS_NULL) 
-      val = 1;
-    else
-      val = 2;
-  } else if (null_v1) {
+  // ValueExpr *null_v1;
+  // ValueExpr *null_v2;
+  // if (left_->type() == ExprType::VALUE && static_cast<ValueExpr*>(left_.get())->value_type() == AttrType::NULLS) {
+  //   null_v1 = static_cast<ValueExpr*>(left_.get());
+  // }
+  // if (right_->type() == ExprType::VALUE && static_cast<ValueExpr*>(right_.get())->value_type() == AttrType::NULLS) {
+  //   null_v2 = static_cast<ValueExpr*>(right_.get());
+  // }
+  // if (null_v1 && null_v2) {
+  //   if (comp_ == CompOp::IS_NULL) 
+  //     val = 1;
+  //   else
+  //     val = 2;
+  // } else if (null_v1) {
 
-  }
+  // }
 }
 
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const

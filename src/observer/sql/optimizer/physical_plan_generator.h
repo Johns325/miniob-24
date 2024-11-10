@@ -30,6 +30,7 @@ class GroupByLogicalOperator;
 class UpdateLogicalOperator;
 class OrderByLogicalOperator;
 class CreateTableSelectLogicalOperator;
+class IvfflatLogicalOperator;
 /**
  * @brief 物理计划生成器
  * @ingroup PhysicalOperator
@@ -47,6 +48,7 @@ public:
   bool detect_sub_queries_valid(LogicalOperator& logcial_oper);
 private:
   RC create_plan(CreateTableSelectLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
+  RC create_plan(IvfflatLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(TableGetLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(PredicateLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(ProjectLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);

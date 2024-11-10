@@ -102,7 +102,7 @@ private:
   bool break_pipeline_{false};
 
 public:
-  int limit;
+  int limit{-1};
 };
 
 
