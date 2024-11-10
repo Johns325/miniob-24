@@ -24,9 +24,38 @@ ScalarGroupByPhysicalOperator::ScalarGroupByPhysicalOperator(vector<Expression *
     : GroupByPhysicalOperator(std::move(expressions))
 {}
 
+RC ScalarGroupByPhysicalOperator::construct_default_values() {
+  AggregatorList aggregator_list;
+  create_aggregator_list(aggregator_list);
+  vector<TupleCellSpec> aggregator_names;
+  for (Expression *expr : aggregate_expressions_) {
+    aggregator_names.emplace_back(expr->name());
+  }
+  ValueListTuple child_tuple_to_value;
+  std::vector<Value> values;
+  for (auto &aggregator : aggregator_list) {
+    Value v;
+    if (aggregator->type() != Aggregation_Type::COUNT)
+      v.set_null();
+    else 
+      v.set_int(0);
+    values.emplace_back(v);
+  }
+  child_tuple_to_value.set_cells(values);
+  child_tuple_to_value.set_names(aggregator_names);
+  CompositeTuple composite_tuple;
+  composite_tuple.add_tuple(make_unique<ValueListTuple>(std::move(child_tuple_to_value)));
+  group_value_ = make_unique<GroupValueType>(std::move(aggregator_list), std::move(composite_tuple));
+  return  RC::SUCCESS;
+}
+
 RC ScalarGroupByPhysicalOperator::open(Trx *trx)
 {
+  RC rc {RC::SUCCESS};
   if (always_false) {
+    if (group_value_ == nullptr) {
+      construct_default_values();
+    }
     return RC::SUCCESS;
   }
   if (emitted_) {
@@ -36,7 +65,7 @@ RC ScalarGroupByPhysicalOperator::open(Trx *trx)
   ASSERT(children_.size() == 1, "group by operator only support one child, but got %d", children_.size());
 
   PhysicalOperator &child = *children_[0];
-  RC                rc    = child.open(trx);
+  rc    = child.open(trx);
   if (OB_FAIL(rc)) {
     LOG_INFO("failed to open child operator. rc=%s", strrc(rc));
     return rc;
@@ -92,6 +121,8 @@ RC ScalarGroupByPhysicalOperator::open(Trx *trx)
   // 得到最终聚合后的值
   if (group_value_) {
     rc = evaluate(*group_value_);
+  } else {
+    construct_default_values();
   }
 
   emitted_ = false;
@@ -100,7 +131,12 @@ RC ScalarGroupByPhysicalOperator::open(Trx *trx)
 
 RC ScalarGroupByPhysicalOperator::next()
 {
-  if (group_value_ == nullptr || emitted_ || always_false) {
+  // if (always_false) {
+  //   always_false = false;
+  //   emitted_ = true;
+  //   return RC::SUCCESS;
+  // }
+  if (group_value_ == nullptr || emitted_) {
     return RC::RECORD_EOF;
   }
 

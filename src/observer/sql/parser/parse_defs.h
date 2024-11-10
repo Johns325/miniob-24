@@ -43,23 +43,23 @@ struct RelAttrSqlNode
  * @brief 描述比较运算符
  * @ingroup SQLParser
  */
-enum CompOp
+enum class CompOp :int32_t
 {
-  EQUAL_TO,     ///< "="
-  LESS_EQUAL,   ///< "<="
-  NOT_EQUAL,    ///< "<>"
-  LESS_THAN,    ///< "<"
-  GREAT_EQUAL,  ///< ">="
-  GREAT_THAN,   ///< ">"
-  LK,
-  NOT_LK,
-  IS_NULL,
-  IN_OP,
-  NOT_IN,
+  EQUAL_TO = 0,     ///< "="
+  LESS_EQUAL = 1,   ///< "<="
+  NOT_EQUAL = 2,    ///< "<>"
+  LESS_THAN = 3,    ///< "<"
+  GREAT_EQUAL = 4,  ///< ">="
+  GREAT_THAN = 5,   ///< ">"
+  LK, //6
+  NOT_LK, //7
+  IS_NULL, // 8
+  IN_OP, // 9
+  NOT_IN, //10
   EXISTS_OP,
   NOT_EXISTS,
   IS_NOT_NULL,
-  NO_OP
+  NO_OP,
 };
 
 /**

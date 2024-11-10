@@ -87,23 +87,24 @@ public:
   RC predicates_push_down(const char *table_name, std::vector<std::unique_ptr<Expression>>& predicates);
   RC remaining_predicates(std::vector<std::unique_ptr<Expression>>& predicates);
 private:
-  std::vector<Table *>                     tables_; //查詢的表
-  std::vector<std::unique_ptr<ConjunctionExpr>>join_expres_; //join條件
-  std::vector<std::unique_ptr<Expression>> query_expressions_; //查詢表達式
+  std::vector<Table *>                     tables_;                  // Tables to reference
+  std::vector<std::unique_ptr<ConjunctionExpr>>join_expres_;         // Join conditions.Joining n tables has n-1 join condtions.
+  std::vector<std::unique_ptr<Expression>> query_expressions_;       // 
   std::vector<std::unique_ptr<Expression>> condition_expressions_; // where
   FilterStmt                              *filter_stmt_ = nullptr; //
-  std::list<SubQueryExpr*>                 sub_queries_; // 包含的所以子查詢
+  std::list<SubQueryExpr*>                 sub_queries_; // 包含的所以子查詢.These sub_queries need to construct logical & physical plans too.
   std::vector<std::unique_ptr<Expression>> group_by_; // group by
-  std::vector<std::unique_ptr<Expression>> having_; // having
-  OrderByStmt                             *order_by_stmt{nullptr}; // order by
-  std::list<Expression*>                   reference_expressions_;
-  bool and_flag_{true};
-  bool using_outer_field_{false};
-  bool break_pipeline_{false};
+  std::vector<std::unique_ptr<Expression>> having_;   // having
+  OrderByStmt                             *order_by_stmt{nullptr};  // order by specifications
+  std::list<Expression*>                   reference_expressions_;  // expressions to references from outer query, currently we only support FieldExpr.
+  bool and_flag_{true};                   // whether conditions in WHERE clause are connected using AND. false indicates OR.
+  bool using_outer_field_{false};         // example: select * from t1 where t1.id < (select avg(t2.sum) from t2 where t2.id > t1.id). so the sub query references the column of outer query, therefore using_outer_field is true for sub query.
+  bool break_pipeline_{false};            // the same thing as using_outer_field_;
 
 public:
   int limit;
   bool is_view_=false;
+  int limit{-1};
 };
 
 

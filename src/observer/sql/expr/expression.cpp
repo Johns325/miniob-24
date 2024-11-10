@@ -242,40 +242,42 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
 // 1 stands for null is null(return true)
 // 2 stands for one of the operands is nulll and the result is false(return immediately)
 // 3 do the comparison.
-void ComparisonExpr::hand_null(int &val) const {
-  ValueExpr *null_v1;
-  ValueExpr *null_v2;
-  if (left_->type() == ExprType::VALUE && static_cast<ValueExpr*>(left_.get())->value_type() == AttrType::NULLS) {
-    null_v1 = static_cast<ValueExpr*>(left_.get());
-  }
-  if (right_->type() == ExprType::VALUE && static_cast<ValueExpr*>(right_.get())->value_type() == AttrType::NULLS) {
-    null_v2 = static_cast<ValueExpr*>(right_.get());
-  }
-  if (null_v1 && null_v2) {
-    if (comp_ == CompOp::IS_NULL) 
-      val = 1;
-    else
-      val = 2;
-  } else if (null_v1) {
+// void ComparisonExpr::hand_null(int &val) const {
+//   ValueExpr *null_v1;
+//   ValueExpr *null_v2;
+//   if (left_->type() == ExprType::VALUE && static_cast<ValueExpr*>(left_.get())->value_type() == AttrType::NULLS) {
+//     null_v1 = static_cast<ValueExpr*>(left_.get());
+//   }
+//   if (right_->type() == ExprType::VALUE && static_cast<ValueExpr*>(right_.get())->value_type() == AttrType::NULLS) {
+//     null_v2 = static_cast<ValueExpr*>(right_.get());
+//   }
+//   if (null_v1 && null_v2) {
+//     if (comp_ == CompOp::IS_NULL) 
+//       val = 1;
+//     else
+//       val = 2;
+//   } else if (null_v1) {
 
-  }
-}
+//   }
+// }
 
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
   RC  rc         = RC::SUCCESS;
 
-  // handle null
+  // handle null a is null
   if (left.attr_type() == AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
     result = comp_ == CompOp::IS_NULL;
+  sql_debug("both are null");
     return RC::SUCCESS;
   } else if (left.attr_type() == AttrType::NULLS || right.attr_type() == AttrType::NULLS) {
     // 其中一个结果是null。结果为true当且仅当comp_ == IS_NOT_NULL
+    sql_debug("we are in here");
     result = comp_ == CompOp::IS_NOT_NULL;
     return RC::SUCCESS;
   }
   // both left and right are not null type.
-  if (comp_ == LK || comp_ == NOT_LK) {
+  if (comp_ == CompOp::LK || comp_ == CompOp::NOT_LK) {
     if (left.attr_type() != AttrType::CHARS || right.attr_type() != AttrType::CHARS) {
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
@@ -290,28 +292,28 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
   int cmp_result = left.compare(right);
   result         = false;
   switch (comp_) {
-    case EQUAL_TO: {
+    case CompOp::EQUAL_TO: {
       result = (0 == cmp_result);
     } break;
-    case LESS_EQUAL: {
+    case CompOp::LESS_EQUAL: {
       result = (cmp_result <= 0);
     } break;
-    case NOT_EQUAL: {
+    case CompOp::NOT_EQUAL: {
       result = (cmp_result != 0);
     } break;
-    case LESS_THAN: {
+    case CompOp::LESS_THAN: {
       result = (cmp_result < 0);
     } break;
-    case GREAT_EQUAL: {
+    case CompOp::GREAT_EQUAL: {
       result = (cmp_result >= 0);
     } break;
-    case GREAT_THAN: {
+    case CompOp::GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
-    case IN_OP:{
+    case CompOp::IN_OP:{
       result = (cmp_result == 0);
     }break;
-    case NOT_IN: {
+    case CompOp::NOT_IN: {
       result = (cmp_result != 0);
     } break;
     default: {
@@ -384,6 +386,7 @@ RC ComparisonExpr::handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , s
   TupleSchema schema;
   PhysicalOperator*query_phy_oper = expr->get_physical_operator();
   expr->hand_expressions(t);
+  
   query_phy_oper->tuple_schema(schema);
   if (schema.cell_num() > 1) {
     return RC::SUB_QUERY_RETURNS_MULTIPLE_COLUMNS;
@@ -444,7 +447,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       return rc;
     }
   }
-
+  
   // right hand side
   if (right_->type() == ExprType::SUB_QUERY) {
     // auto query_expr = static_cast<SubQueryExpr*>(right_.get());
@@ -454,8 +457,10 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       else if (right_values_.empty()) {
         // Result of sub query is empty.
         right_value.set_null();
+        sql_debug("right hanld side is empty and cmp is :%d", comp_);
       } else {
         right_value = right_values_[0];
+        // sql_debug("right hanld side return single cell :%d,%d", comp_, right_value.attr_type());
       }
     }
   } else if (right_->type() == ExprType::CONSTANT_VALUE_LIST) {
@@ -487,19 +492,19 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       }
       if (result && comp_ == CompOp::IN_OP) {
         value.set_boolean(true);
-        return rc;
+        return RC::SUCCESS;
       }
       if (!result && comp_ == CompOp::NOT_IN) {
         value.set_boolean(false);
-        return rc;
+        return RC::SUCCESS;
       }
     }
     value.set_boolean(comp_ == CompOp::NOT_IN);
-    return rc;
+    return RC::SUCCESS;
   }
 
   bool bool_value = false;
-
+  
   rc = compare_value(left_value, right_value, bool_value);
   if (rc == RC::SUCCESS) {
     value.set_boolean(bool_value);
@@ -573,21 +578,25 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
 
   Value tmp_value;
   for (const unique_ptr<Expression> &expr : children_) {
-    if (expr->type() == ExprType::COMPARISON) {
-      auto cmp_exp = static_cast<ComparisonExpr*>(expr.get());
-      if (cmp_exp->left()->type() == ExprType::SUB_QUERY) {
-        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->left().get())->get_physical_operator(), cmp_exp->value_list(true), true);
-      }
-      if (cmp_exp->right()->type() == ExprType::SUB_QUERY) {
-        cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->right().get())->get_physical_operator(), cmp_exp->value_list((false)), false);
-      }
-    }
+    // if (expr->type() == ExprType::COMPARISON) {
+    //   auto cmp_exp = static_cast<ComparisonExpr*>(expr.get());
+    //   if (cmp_exp->left()->type() == ExprType::SUB_QUERY) {
+    //     cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->left().get())->get_physical_operator(), cmp_exp->value_list(true), true);
+    //   }
+    //   if (cmp_exp->right()->type() == ExprType::SUB_QUERY) {
+    //     cmp_exp->handle_sub_query(static_cast<SubQueryExpr*>(cmp_exp->right().get())->get_physical_operator(), cmp_exp->value_list((false)), false);
+    //   }
+    // }
     rc = expr->get_value(tuple, tmp_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
       return rc;
     }
     bool bool_value = tmp_value.get_boolean();
+    if (children_.size() == 1) {
+      value.set_boolean(bool_value);
+      return rc;
+    }
     if ((conjunction_type_ == Type::AND && !bool_value) || (conjunction_type_ == Type::OR && bool_value)) {
       value.set_boolean(bool_value);
       return rc;

@@ -551,9 +551,9 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
     query->set_select_stmt(ss);
   }
  
-  if (!binder->expressions_.empty()) {
-    sel_stmt->reference_expressions_.swap(binder->expressions_);
-  }
+  // if (!binder->expressions_.empty()) {
+  //   sel_stmt->reference_expressions_.swap(binder->expressions_);
+  // }
   
   if (db->col_references.find(info.tables[0]) != db->col_references.end()) {
     auto ls = db->col_references[info.tables[0]];

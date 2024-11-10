@@ -18,3 +18,8 @@ PredicateLogicalOperator::PredicateLogicalOperator(std::unique_ptr<Expression> e
 {
   expressions_.emplace_back(std::move(expression));
 }
+
+
+void PredicateLogicalOperator::put_expressions(std::list<Expression*>& expressions) {
+  expressions_to_reset_.insert(expressions_to_reset_.end(), expressions.begin(), expressions.end());
+}

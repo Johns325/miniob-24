@@ -40,10 +40,18 @@ public:
   Tuple *current_tuple() override;
 
   RC tuple_schema(TupleSchema &schema) const override;
-  void hand_all_sub_queries();
-  void hand_all_sub_queries_every_time(Tuple *t);
+  RC hand_all_sub_queries();
+  RC hand_all_sub_queries_every_time(Tuple *t);
+  RC simplify_comparisons();
+  void put_expressions(std::list<Expression*>& expressions) {expressions_to_set_each_time_.insert(expressions_to_set_each_time_.end(), expressions.begin(), expressions.end());}
+  void put_sub_queries(std::list<SubQueryExpr*>& queries) { sub_queries_.insert(sub_queries_.end(), sub_queries_.begin(), sub_queries_.end()); }
 private:
   std::unique_ptr<Expression> expression_; 
   Trx *trx_{nullptr};
+  bool predicates_always_false_ { false};
+  bool predicates_always_true_ {false};
+  
+  std::list<SubQueryExpr*> sub_queries_;
+  std::list<Expression*> expressions_to_set_each_time_;
   // std::list<SubQueryExpr*> sub_queries_;
 };

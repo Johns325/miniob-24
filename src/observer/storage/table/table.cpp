@@ -31,6 +31,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
 #include "storage/index/ivfflat_index.h"
+#include "event/sql_debug.h"
 Table::~Table()
 {
   if (record_handler_ != nullptr) {
@@ -576,9 +577,11 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *>&field_metas, con
     //           tmp_file.c_str(), meta_file.c_str(), index_name, name(), errno, strerror(errno));
     return RC::IOERR_WRITE;
   }
-
+  string attr_names;
+  for (auto &meta : field_metas)
+    attr_names = attr_names + meta->name() + ",";
   table_meta_.swap(new_table_meta);
-
+  sql_debug("create index on columns [%s], and it is a unique index?%s",attr_names.c_str(), (unique ? "yes":"no"));
   // LOG_INFO("Successfully added a new index (%s) on the table (%s)", index_name, name());
   return rc;
 }

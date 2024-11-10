@@ -16,12 +16,22 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/insert_stmt.h"
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
-
+#include "event/sql_debug.h"
 using namespace std;
 
 InsertPhysicalOperator::InsertPhysicalOperator(Table *table, vector<Value> &&values)
     : table_(table), values_(std::move(values))
 {}
+
+string InsertPhysicalOperator::str() {
+  if (values_.empty())
+    return "";
+  string s = values_[0].get_string();
+  for (int i = 1;i < values_.size();++i) {
+    s = s + "," + values_[i].get_string();
+  }
+  return s;
+}
 
 RC InsertPhysicalOperator::open(Trx *trx)
 {
@@ -32,7 +42,13 @@ RC InsertPhysicalOperator::open(Trx *trx)
     return rc;
   }
 
+
   rc = trx->insert_record(table_, record);
+  if (strcmp(table_->name(), "csq_1") == 0) {
+    
+    sql_debug("insert into csq_1:%s", str().c_str());
+  }
+  // sql_debug("")
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to insert record by transaction. rc=%s", strrc(rc));
   }

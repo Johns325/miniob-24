@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/aggregator.h"
 #include "storage/common/chunk.h"
 #include "sql/stmt/select_stmt.h"
+#include "event/sql_debug.h"
 // #include "sql/operator/physical_operator.h"
 // #include "sql/operator/logical_operator.h"
 
@@ -323,6 +324,9 @@ public:
     expressions_.insert(expressions_.end(), expr.begin(), expr.end());
   }
   void hand_expressions(Tuple *t) {
+    if (!expressions_.empty()) {
+      sql_debug("expressions are not empty");
+    }
     for (auto expr : expressions_) {
       if (expr->type() == ExprType::FIELD) {
         static_cast<FieldExpr*>(expr)->put_tuple(t);
@@ -415,7 +419,7 @@ public:
    * 在优化的时候，可能会使用到
    */
   RC try_get_value(Value &value) const override;
-  bool is_range_comparator() const { return  comp_ == CompOp::IN_OP || comp_ == CompOp::NOT_IN;}
+  bool is_range_comparator() const { return  (comp_ == CompOp::IN_OP) || (comp_ == CompOp::NOT_IN);}
   RC handle_sub_query(PhysicalOperator*query_phy_oper , std::vector<Value>&values, bool);
   RC handle_sub_query_from_scrath(SubQueryExpr* expr, Trx* trx , std::vector<Value>&values, bool, Tuple*t);
   /**

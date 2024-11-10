@@ -415,6 +415,8 @@ public:
     return RC::NOTFOUND;
   }
 
+  void set_cells(std::vector<Value>&& values) { cells_ = std::move(values); }
+
   static RC make(const Tuple &tuple, ValueListTuple &value_list)
   {
     const int cell_num = tuple.cell_num();

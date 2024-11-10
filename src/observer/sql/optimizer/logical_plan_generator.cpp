@@ -162,7 +162,11 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   select_stmt->remaining_predicates(condition_expressions);
   if (!condition_expressions.empty()) {
     unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr((select_stmt->and_flag_ ? ConjunctionExpr::Type::AND : ConjunctionExpr::Type::OR), std::move(condition_expressions)));
-    predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
+    auto ptr = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
+    if (!select_stmt->reference_expressions_.empty()) {
+      ptr->put_expressions(select_stmt->reference_expressions_);
+    }
+    predicate_oper = std::move(ptr);
   }
   // 對這個查詢的所有子查詢生產查詢計劃. 並且把所有的子查詢都放到ProjectPhysicalOperator中，這樣可以統一執行open操作
   for (auto query : select_stmt->sub_queries()) {
