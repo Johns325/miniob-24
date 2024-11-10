@@ -19,7 +19,7 @@ RC IvfflatPhysicalOperator::next() {
   if (index_ == rids_.size()) {
     return RC::RECORD_EOF;
   }
-  unit_->table_->get_record(rids_[index_], current_record_);
+  unit_->table_->get_record(*rids_[index_], current_record_);
   current_tuple_.set_record(&current_record_);
   ++index_;
   return RC::SUCCESS;

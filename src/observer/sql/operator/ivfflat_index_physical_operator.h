@@ -44,7 +44,7 @@ private:
   int limit_{0};
   RowTuple   current_tuple_;
   Record     current_record_;
-  std::vector<RID> rids_; //存放ann_search 返回的所有rids.
+  std::vector<RID*> rids_; //存放ann_search 返回的所有rids.
   size_t index_{0};
   
 };

@@ -166,8 +166,8 @@ std::vector<size_t> IvfflatIndex::FindNearestCentroids(const vector<float> &base
     return nearest_centroids;  // 返回最近的中心点的索引列表
 }
 
-vector<RID> IvfflatIndex::ScanVectorKey(const vector<float> &base_vector, size_t limit)  {
-    std::vector<RID> global_result;  // 全局结果，存储最终的最近邻居
+vector<RID*> IvfflatIndex::ScanVectorKey(const vector<float> &base_vector, size_t limit)  {
+    std::vector<RID *> global_result;  // 全局结果，存储最终的最近邻居
     std::vector<std::pair<float, RID*>> local_results;  // 存储局部结果 (distance, RID)
 
     // Step 1: 找到与 base_vector 距离最近的 probe_lists_ 个中心点
@@ -195,7 +195,7 @@ vector<RID> IvfflatIndex::ScanVectorKey(const vector<float> &base_vector, size_t
 
     // Step 4: 取前 limit 个 RID 作为最终结果
     for (size_t i = 0; i < std::min(limit, local_results.size()); ++i) {
-        global_result.push_back(*local_results[i].second);
+        global_result.push_back(local_results[i].second);
     }
 
     return global_result;  // 返回最终的最近邻居的 RID 列表

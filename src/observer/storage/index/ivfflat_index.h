@@ -52,8 +52,8 @@ public:
 
   bool is_vector_index() override { return true; }
 
-  vector<RID> ann_search(const vector<float> &base_vector, size_t limit) { return ScanVectorKey(base_vector, limit); }
-  vector<RID> ann_search(Value &base_vector, size_t limit) { return vector<RID>(); }
+  vector<RID*> ann_search(const vector<float> &base_vector, size_t limit) { return ScanVectorKey(base_vector, limit); }
+  vector<RID*> ann_search(Value &base_vector, size_t limit) { return vector<RID*>(); }
 
   RC close() { return RC::SUCCESS; }
 
@@ -79,6 +79,6 @@ public:
 public:
   std::vector<vector<float>> RandomSample(const std::vector<std::pair<vector<float>, RID*>> &data, size_t num_samples);
   std::vector<size_t> FindNearestCentroids(const vector<float> &base_vector, size_t num_centroids);
-  vector<RID> ScanVectorKey(const vector<float> &base_vector, size_t limit);
+  vector<RID*> ScanVectorKey(const vector<float> &base_vector, size_t limit);
   std::vector<std::pair<vector<float>, RID*>> initial_data;
 };
