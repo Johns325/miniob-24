@@ -235,7 +235,7 @@ RC PredicatePhysicalOperator::next()
     }
 
     if (value.get_boolean()) {
-      sql_debug("get a tuple: %s ", tuple->to_string().c_str());
+      // sql_debug("get a tuple: %s ", tuple->to_string().c_str());
       return rc;
     }
   }
