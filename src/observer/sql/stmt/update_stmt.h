@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 class Table;
 class FilterStmt;
 class FieldMeta;
+class View;
 /**
  * @brief 更新语句
  * @ingroup Statement

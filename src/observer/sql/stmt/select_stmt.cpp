@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/table/table.h"
 #include "sql/parser/expression_binder.h"
 #include "sql/stmt/order_by_stmt.h"
+#include "storage/view/view.h"
 
 using namespace std;
 using namespace common;
@@ -89,15 +90,32 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relat
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return {RC::INVALID_ARGUMENT,nullptr};
     }
-
+    View *view=db->find_view(table_name);
     Table *table = db->find_table(table_name);
-    if (nullptr == table) {
+    if (nullptr == table&&view==nullptr) {
       LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
       return {RC::SCHEMA_TABLE_NOT_EXIST, nullptr};
     }
+    if (view!=nullptr) {
+      std::vector<Table*> vtables=view->get_tables();
+      if (view->onetable()) table=vtables[0];
+      else {
+        for (int j=0;j<vtables.size();j++) {
+          table=vtables[j];
+          ctx.add_table(table);
+          tables.push_back(table);
+          table_map.insert({table->name(), table});
+          // if (!(*relations[i]).relation_alias.empty()) {
+          //   auto alias = (*relations[i]).relation_alias.c_str();
+          //   alias2table.insert({alias, table});
+          // }
+        }
+        break;
+      }
+    } 
     ctx.add_table(table);
     tables.push_back(table);
-    table_map.insert({table_name, table});
+    table_map.insert({table->name(), table});
     if (!(*relations[i]).relation_alias.empty()) {
       auto alias = (*relations[i]).relation_alias.c_str();
       alias2table.insert({alias, table});

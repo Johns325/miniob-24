@@ -28,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/create_vector_index_stmt.h"
 #include "sql/executor/create_vector_index_executor.h"
+#include "sql/executor/create_view_executor.h"
 
 RC CommandExecutor::execute(SQLStageEvent *sql_event)
 {
@@ -46,6 +47,11 @@ RC CommandExecutor::execute(SQLStageEvent *sql_event)
 
     case StmtType::CREATE_TABLE: {
       CreateTableExecutor executor;
+      rc = executor.execute(sql_event);
+    } break;
+
+    case StmtType::CREATE_VIEW: {
+      CreateViewExecutor executor;
       rc = executor.execute(sql_event);
     } break;
 

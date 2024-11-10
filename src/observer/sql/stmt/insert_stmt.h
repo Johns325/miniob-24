@@ -19,7 +19,7 @@ See the Mulan PSL v2 for more details. */
 
 class Table;
 class Db;
-
+class View;
 /**
  * @brief 插入语句
  * @ingroup Statement

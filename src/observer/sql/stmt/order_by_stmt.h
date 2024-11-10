@@ -10,6 +10,7 @@ class OrderByUnit {
  public:
   OrderByUnit(Table* table, const FieldMeta* field, bool asc) : table_(table), field_(field), asc_(asc)  {}
   OrderByUnit(Table* table, const FieldMeta* field, bool asc, int type, Value &&base_vector) : table_(table), field_(field), asc_(asc), distance_type_(type), base_vector_(base_vector)  {}
+  
  public:
   Table *table_;
   const FieldMeta *field_;

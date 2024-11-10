@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "sql/parser/expression_binder.h"
 #include "sql/stmt/select_stmt.h"
+#include "storage/view/view.h"
 UpdateStmt::UpdateStmt(Table *table, std::vector<Assignment*>*assignments, std::vector<unique_ptr<Expression>>&&exprs)
 : table_(table), assignments_(assignments), expressions_(std::move(exprs)) {}
 
@@ -27,8 +28,16 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
 {
   // TODO
   auto table = db->find_table(update.relation_name.c_str());
-  if (table == nullptr){
+  auto view = db->find_view(update.relation_name.c_str());
+  if (table == nullptr&&view==nullptr){
     return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  if (view!=nullptr) {
+    if (!view->onetable()) {
+      LOG_WARN("you cannot update from a view with more than one tables,view=%s",view->name());
+      return RC::INVALID_ARGUMENT;
+    }
+    table=view->get_tables()[0];
   }
   for(auto assign : *update.assignments) {
 

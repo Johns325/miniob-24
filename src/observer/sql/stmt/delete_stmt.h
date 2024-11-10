@@ -19,7 +19,7 @@ See the Mulan PSL v2 for more details. */
 
 class Table;
 class FilterStmt;
-
+class View;
 /**
  * @brief Delete 语句
  * @ingroup Statement

@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/db/db.h"
 #include "storage/table/table.h"
+#include "storage/view/view.h"
 #include "sql/parser/expression_binder.h"
 DeleteStmt::DeleteStmt(Table *table, std::vector<unique_ptr<Expression>>&&exprs) : table_(table), expressions_(std::move(exprs)) {}
 
@@ -38,11 +39,20 @@ RC DeleteStmt::create(Db *db, const DeleteSqlNode &delete_sql, Stmt *&stmt)
 
   // check whether the table exists
   Table *table = db->find_table(table_name);
-  if (nullptr == table) {
+  View *view=db->find_view(table_name);
+  if (nullptr == table&&nullptr==view) {
     LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
-
+  else if (view!=nullptr) {
+    if (view->onetable()==false) {
+      LOG_WARN("you cannot delete from a view with more than one tables,view=%s",view->name());
+      return RC::INVALID_ARGUMENT;
+    }
+    else {
+      table=view->get_tables()[0];
+    }
+  }
   std::unordered_map<std::string, Table *> table_map;
   table_map.insert(std::pair<std::string, Table *>(std::string(table_name), table));
   BinderContext ctx;

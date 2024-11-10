@@ -12,11 +12,11 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/index/index.h"
 #include "sql/stmt/create_vector_index_stmt.h"
-enum class Distance_Type:int32_t {
-  L2_DISTANCE = 1,
-  COSINE_DISTANCE,
-  INNER_PRODUCT,
-};
+// enum class Distance_Type:int32_t {
+//   L2_DISTANCE = 1,
+//   COSINE_DISTANCE,
+//   INNER_PRODUCT,
+// };
 
 enum class Index_Type :int32_t {
   IVFFLAT = 1,
@@ -53,6 +53,7 @@ public:
   bool is_vector_index() override { return true; }
 
   vector<RID> ann_search(const vector<float> &base_vector, size_t limit) { return ScanVectorKey(base_vector, limit); }
+  vector<RID> ann_search(Value &base_vector, size_t limit) { return vector<RID>(); }
 
   RC close() { return RC::SUCCESS; }
 
