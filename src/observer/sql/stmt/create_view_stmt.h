@@ -29,7 +29,8 @@ class SelectStmt;
 class CreateViewStmt : public Stmt
 {
 public:
-  CreateViewStmt(const std::string &view_name, SelectStmt*stmt): view_name_(view_name), select_stmt_(stmt){}
+  CreateViewStmt(const std::string &view_name, SelectStmt*stmt, std::vector<AttrInfoSqlNode> &&info,bool has_schema)
+  : view_name_(view_name), select_stmt_(stmt), info_(std::move(info)),has_schema_(has_schema){}
   virtual ~CreateViewStmt() = default;
 
   StmtType type() const override { return StmtType::CREATE_VIEW; }
@@ -37,8 +38,11 @@ public:
   static RC            create(Db *db, const CreateViewSqlNode &create_view, Stmt *&stmt);
   const std::string    &view_name() const {return view_name_;}
   SelectStmt*          select_stmt() {return select_stmt_;}
-
+  std::vector<AttrInfoSqlNode> &attr_infos() { return info_; }
+  bool has_schema() {return has_schema_;}
 private:
   std::string                  view_name_;
   SelectStmt   *select_stmt_;
+  std::vector<AttrInfoSqlNode> info_;
+  bool has_schema_=false;
 };

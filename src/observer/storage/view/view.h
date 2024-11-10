@@ -23,7 +23,7 @@ public:
    * @param name 视图名
    * @param select_stmt 包含的select语句
    */
-    RC create(Db *db,string name,SelectStmt *select_stmt);
+    RC create(Db *db,string name,SelectStmt *select_stmt,std::vector<AttrInfoSqlNode> &infos,bool has_schema);
     SelectStmt *get_select() {return select_stmt_;};
     string name(){return name_;};
     std::vector<Table*> &get_tables() {return tables_;}
@@ -37,4 +37,5 @@ private:
     bool is_one_table=false;
     std::vector<std::vector<FieldMeta>> fieldmetas_;
     std::vector<std::vector<bool>> null_info_;
+    std::unordered_map<std::string,FieldMeta> name_to_meta;
 };

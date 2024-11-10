@@ -557,7 +557,25 @@ create_view_stmt:
     view.view_name =string($3);
     free($3);
     view.query = $5;
-  };
+    view.has_schema=false;
+  }
+  | CREATE VIEW ID LBRACE attr_def attr_def_list RBRACE as_stmt  select_stmt {
+    $$ = new ParsedSqlNode(SCF_CREATE_VIEW);
+    auto &view = $$->create_view;
+    view.view_name =string($3);
+    free($3);
+    std::vector<AttrInfoSqlNode> *src_attrs = $6;
+
+      if (src_attrs != nullptr) {
+        create_view.attr_infos.swap(*src_attrs);
+        delete src_attrs;
+      }
+      create_view.attr_infos.emplace_back(*$5);
+      std::reverse(create_view.attr_infos.begin(), create_view.attr_infos.end());
+      delete $5;
+    view.query = $9;
+    view.has_schema=true;
+  }
 as_stmt: //ok
   /* empty */
   {

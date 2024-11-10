@@ -225,6 +225,8 @@ struct AttrInfoSqlNode
 struct CreateViewSqlNode{
   std::string view_name;
   ParsedSqlNode * query;
+  std::vector<AttrInfoSqlNode> attr_infos;
+  bool has_schema{false};
 };
 
 struct CreateTableSelectSqlNode{

@@ -21,7 +21,7 @@ View::~View()
     tables_.clear();
 }
 
-RC View::create(Db *db, string name, SelectStmt *select_stmt)
+RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<AttrInfoSqlNode> &infos,bool has_schema)
 {
     if (name=="") {
         LOG_WARN("Name cannot be empty");
@@ -43,13 +43,28 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt)
     int expr_size=exprs.size();
     for (int i=0;i<expr_size;i++) {
         if (exprs[i]->type()==ExprType::STAR) {
-            for (int j=0;j<table_size;j++) {
-                std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
-                fieldmetas_.push_back(fmetas);
+            if (has_schema) {
+                size_t name_i=0;
+                for (int j=0;j<table_size;j++) {
+                    std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
+                    fieldmetas_.push_back(fmetas);
+                    for (size_t k=0;k<fmetas.size();k++) {
+                        string name=infos[name_i].name;
+                        name_to_meta.insert({name,fmetas[k]});
+                        name_i++;
+                    } 
+                }
             }
+            else {
+                for (int j=0;j<table_size;j++) {
+                    std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
+                    fieldmetas_.push_back(fmetas);
+                }
+            }
+            
         }
         else if (exprs[i]->type()==ExprType::FIELD) {
-
+            size_t name_i=0;
             FieldExpr* expr=dynamic_cast<FieldExpr*>(exprs[i].get());
             Field& expr_field=expr->field();
             for (int j=0;j<table_size;j++) { 
@@ -57,6 +72,10 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt)
                 fieldmetas_.push_back(fs);
                 if (strcmp(expr_field.table_name(),tables_[j]->name())==0) {
                     fieldmetas_[j].push_back(*expr_field.meta());
+                    if (has_schema) {
+                        const FieldMeta* fm=expr_field.meta();
+                        name_to_meta.insert({infos[name_i].name,*fm});
+                    }
                 }
             }
         }
