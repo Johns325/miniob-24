@@ -83,7 +83,7 @@ RC SelectStmt::remaining_predicates(std::vector<std::unique_ptr<Expression>>& pr
   }
   return RC::SUCCESS;
 }
-std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2table, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs) {
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2table, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs,bool *is_view) {
   for (size_t i = 0; i < relations.size(); i++) {
     auto table_name = (*relations[i]).relation_name.c_str();
     if (nullptr == table_name) {
@@ -97,6 +97,7 @@ std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relat
       return {RC::SCHEMA_TABLE_NOT_EXIST, nullptr};
     }
     if (view!=nullptr) {
+      *is_view=true;
       std::vector<Table*> vtables=view->get_tables();
       if (view->onetable()) table=vtables[0];
       else {
@@ -398,7 +399,8 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   unordered_map<string, Table *> table_map; //
   unordered_map<string, Table*> alias_to_table;
   std::vector<std::unique_ptr<ConjunctionExpr>> join_expres;
-  auto res = bind_from(db, select_sql.relations, table_map, alias_to_table, context, tables, join_expres);
+  bool is_view=false;
+  auto res = bind_from(db, select_sql.relations, table_map, alias_to_table, context, tables, join_expres,&is_view);
   if (!OB_SUCC(res.first)) {
     LOG_WARN("bound table ref failed");
     return res.first;
@@ -413,6 +415,52 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   RC rc{RC::SUCCESS};
   if (rc = bind_select(binder.get(), select_sql.expressions, bound_expressions, info.alias_2_expressions); !OB_SUCC(rc)) {
     return rc;
+  }
+  if (is_view) {
+    View* view=db->find_view(select_sql.relations[0]->relation_name.data());
+    SelectStmt* sub_select=view->get_select();
+    auto &sub_exprs=sub_select->query_expressions();
+    for (size_t i=0;i<bound_expressions.size();i++) {
+      if (bound_expressions[i]->type()==ExprType::FIELD) {
+        auto expr=dynamic_cast<FieldExpr*> (bound_expressions[i].get());
+        bool in_sub=false;
+        for (size_t j=0;j<sub_exprs.size();j++) {
+          auto sub_expr=dynamic_cast<FieldExpr*> (sub_exprs[j].get());
+          if (strcmp(expr->name(),sub_expr->name())==0) {
+            in_sub=true;
+            bound_expressions[i]->set_name(view->infos_[j]);
+            break;
+          }
+        }
+        if (!in_sub) {
+          bound_expressions.erase(bound_expressions.begin()+i);
+        }
+      }
+      if (bound_expressions[i]->type()==ExprType::AGGREGATION) {
+        auto expr=dynamic_cast<AggregateExpr*> (bound_expressions[i].get());
+        auto &child=expr->child();
+        if (child->type()==ExprType::FIELD) {
+          bool in_sub=false;
+          for (size_t j=0;j<sub_exprs.size();j++) {
+            auto sub_expr=dynamic_cast<FieldExpr*> (sub_exprs[j].get());
+            if (strcmp(child->name(),sub_expr->name())==0) {
+              in_sub=true;
+              child->set_name(view->infos_[j]);
+              break;
+            }
+          }
+          if (!in_sub) {
+            bound_expressions.erase(bound_expressions.begin()+i);
+          }
+        }
+        // else if (child->type()==ExprType::STAR) {
+        //   AggregateExpr* agg=new AggregateExpr(expr->aggregate_type(),sub_exprs[0].get());
+        //   bound_expressions.erase(bound_expressions.begin()+i);
+        //   bound_expressions.emplace_back(agg);
+        // }
+        
+      }
+    }
   }
 
   /* ******************************************************{bind_where}*******************************************************************/ 

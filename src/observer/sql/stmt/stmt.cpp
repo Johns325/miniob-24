@@ -78,6 +78,16 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
             } else if (expr->type() == ExprType::UNBOUND_AGGREGATION) {
               auto aggre_expr = static_cast<UnboundAggregateExpr*>(expr.get());
               auto field_name = string(aggre_expr->child()->name());
+              //printf("child=%s\n",field_name.c_str());
+              if (strcmp(field_name.c_str(), "*") == 0) {
+                string agg_name(aggre_expr->name());
+                auto pos = agg_name.find("(");
+                auto aggre_func_name = agg_name.substr(0, pos);
+                if (aggre_func_name != "count") {
+                  return RC::INVALID_ARGUMENT;
+                }
+                continue;
+              }
               if (view->name_to_meta.find(field_name) == view->name_to_meta.end()) {
                 return RC::INTERNAL;
               }

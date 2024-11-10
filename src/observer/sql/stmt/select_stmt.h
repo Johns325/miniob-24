@@ -103,11 +103,12 @@ private:
 
 public:
   int limit;
+  bool is_view_=false;
 };
 
 
 
-std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs);
+std::pair<RC, ExpressionBinder*> bind_from(Db* db, std::vector<rel_info*>& relations, std::unordered_map<string, Table*>&table_map, unordered_map<string, Table*>& alias2name, BinderContext& ctx, std::vector<Table*>& tables, std::vector<unique_ptr<ConjunctionExpr>>& join_exprs,bool* is_view);
 RC bind_select(ExpressionBinder* binder, std::vector<std::unique_ptr<Expression>>& relations, vector<unique_ptr<Expression>>&bound_expressions,  std::unordered_map<string, Expression*>& alias_to_expressions);
 RC bind_join_conditions(ExpressionBinder &binder, std::vector<rel_info>& relations, std::vector<unique_ptr<Expression>>& bound_join_exprs);
 RC check_join_validation(UnboundFieldExpr* expr,std::unordered_map<string, Table*>& alias_to_table_name, std::vector<Table*>&tables, size_t index);

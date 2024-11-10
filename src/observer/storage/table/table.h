@@ -55,7 +55,7 @@ public:
    */
   RC create(Db *db, int32_t table_id, const char *path, const char *name, const char *base_dir,
       span<const AttrInfoSqlNode> attributes, StorageFormat storage_format);
-
+  void init_meta(std::vector<const FieldMeta*>& metas, std::vector<string>& infos) { table_meta_.init_by_metas(metas, infos);}
   /**
    * 打开一个表
    * @param meta_file 保存表元数据的文件完整路径

@@ -44,6 +44,19 @@ void TableMeta::swap(TableMeta &other) noexcept
   std::swap(record_size_, other.record_size_);
 }
 
+void TableMeta::init_by_metas(std::vector<const FieldMeta*>& metas, std::vector<string>& infos) {
+  fields_.reserve(metas.size());
+  for (size_t i = 0; i < metas.size(); i++) {
+    const FieldMeta *meta_from_outside = metas[i];
+    FieldMeta meta;
+    meta.init(infos[i].c_str(), meta_from_outside->type(), meta_from_outside->offset(),meta_from_outside->len(), meta_from_outside->visible(), i, meta_from_outside->nullable()); 
+    record_size_ += meta.len();
+    if (meta.nullable())
+      record_size_ +=1;
+    fields_.push_back(meta);
+  } 
+}
+
 RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMeta> *trx_fields,
                    span<const AttrInfoSqlNode> attributes, StorageFormat storage_format) {
   if (common::is_blank(name)) {

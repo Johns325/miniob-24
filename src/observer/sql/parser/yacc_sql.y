@@ -572,7 +572,7 @@ create_view_stmt:
       view.infos.swap(*src_attrs);
       delete src_attrs;
     }
-    //std::reverse(view.infos.begin(), view.infos.end());
+    std::reverse(view.infos.begin(), view.infos.end());
     view.query = $8;
     view.has_schema=true;
   };
@@ -935,6 +935,7 @@ expression:
     | '*' {
       printf("star expression\n");
       $$ = new StarExpr();
+      $$->set_name("*");
     }
     | expression '+' expression {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::ADD, $1, $3, sql_string, &@$);

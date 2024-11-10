@@ -61,6 +61,7 @@ Table::~Table()
   LOG_INFO("Table has been closed: %s", name());
 }
 
+
 RC Table::create(Db *db, int32_t table_id, const char *path, const char *name, const char *base_dir,
     span<const AttrInfoSqlNode> attributes, StorageFormat storage_format)
 {

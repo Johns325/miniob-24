@@ -18,6 +18,8 @@ View::~View()
     for (auto t:tables_) {
         delete t;
     }
+    if (nullptr != dumy_table_)
+        delete dumy_table_;
     tables_.clear();
 }
 
@@ -30,6 +32,7 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
     db_=db;
     name_=name;
     select_stmt_=select_stmt;
+    infos_.assign(infos.begin(),infos.end());
     std::vector<Table*> select_tables=select_stmt->tables();
     tables_.assign(select_tables.begin(),select_tables.end());
     int table_size=select_tables.size();
@@ -41,17 +44,17 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
       return RC::INVALID_ARGUMENT;
     }
     int expr_size=exprs.size();
+    
     for (int i=0;i<expr_size;i++) {
         if (exprs[i]->type()==ExprType::STAR) {
             if (has_schema) {
-                has_schema_=true;
                 size_t name_i=0;
                 for (int j=0;j<table_size;j++) {
                     std::vector<FieldMeta> fmetas=*tables_[j]->table_meta().field_metas();
                     fieldmetas_.push_back(fmetas);
                     for (size_t k=0;k<fmetas.size();k++) {
                         string name=infos[name_i];
-                        name_to_meta.insert({name,fmetas[k]});
+                        name_to_meta.insert({name,&fmetas[k]});
                         name_i++;
                     } 
                 }
@@ -63,7 +66,7 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
                     fieldmetas_.push_back(fmetas);
                     for (size_t k=0;k<fmetas.size();k++) {
                         string name=infos[name_i];
-                        name_to_meta.insert({name,fmetas[k]});
+                        name_to_meta.insert({name,&fmetas[k]});
                         name_i++;
                     }
                 }
@@ -71,23 +74,15 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
             
         }
         else if (exprs[i]->type()==ExprType::FIELD) {
-            size_t name_i=0;
             FieldExpr* expr=dynamic_cast<FieldExpr*>(exprs[i].get());
             Field& expr_field=expr->field();
+            auto meta = expr->field().meta();
+            name_to_meta.insert({infos[i],meta});
             for (int j=0;j<table_size;j++) { 
                 std::vector<FieldMeta> fs;
                 fieldmetas_.push_back(fs);
                 if (strcmp(expr_field.table_name(),tables_[j]->name())==0) {
                     fieldmetas_[j].push_back(*expr_field.meta());
-                    const FieldMeta* fm=expr_field.meta();
-                    name_to_meta.insert({infos[name_i],*fm});
-                    name_i++;
-                    if (has_schema) {
-                        has_schema_=true;
-                    }
-                    else {
-                        has_schema_=false;
-                    }
                 }
             }
         }
@@ -105,5 +100,12 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
             null_info_[i].push_back(ij);
         }
     }
+    std::vector<const FieldMeta*> metas;
+    for (auto info : infos) {
+      auto meta = name_to_meta.find(info)->second;
+      metas.emplace_back(meta);
+    }
+    dumy_table_ = new Table;
+    dumy_table_->init_meta(metas, infos);
     return RC::SUCCESS;
 }

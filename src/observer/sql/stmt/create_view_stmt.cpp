@@ -6,9 +6,9 @@
 #include "sql/parser/expression_binder.h"
 
 RC CreateViewStmt::create(Db *db, const CreateViewSqlNode &create_view, Stmt *&stmt) {
-  Stmt *s=new SelectStmt();
+  // Stmt *s=new SelectStmt();
+  Stmt *s;
   if (Stmt::create_stmt(db,*create_view.query,s)!=RC::SUCCESS) {
-    delete s;
     return RC::UNIMPLEMENTED;
   }//如果成功，s就成为我们需要的select_stmt
   SelectStmt* ss=(SelectStmt*)s;

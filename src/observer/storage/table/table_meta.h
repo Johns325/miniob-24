@@ -37,7 +37,7 @@ public:
   TableMeta(const TableMeta &other);
 
   void swap(TableMeta &other) noexcept;
-
+  void init_by_metas(std::vector<const FieldMeta*>& metas, std::vector<string>& infos);
   RC init(int32_t table_id, const char *name, const std::vector<FieldMeta> *trx_fields,
       std::span<const AttrInfoSqlNode> attributes, StorageFormat storage_format);
 
