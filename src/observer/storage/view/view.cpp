@@ -11,9 +11,9 @@ View::~View()
     if (name_!="") {
         name_="";
     }
-    if (select_stmt_!=nullptr) {
-        delete select_stmt_;
-        select_stmt_=nullptr;
+    if (select_node_!=nullptr) {
+        delete select_node_;
+        select_node_=nullptr;
     }
     for (auto t:tables_) {
         delete t;
@@ -22,8 +22,13 @@ View::~View()
         delete dumy_table_;
     tables_.clear();
 }
+SelectStmt* View::get_select() {
+    Stmt *stmt;
+    SelectStmt::create(db_, *select_node_, stmt, nullptr);
+    return dynamic_cast<SelectStmt*>(stmt);
+}
 
-RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema,SelectSqlNode *select_node)
+RC View::create(Db *db, string name, std::vector<std::string> &infos,bool has_schema,SelectSqlNode *select_node)
 {
     has_schema_=has_schema;
     if (name=="") {
@@ -32,15 +37,15 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
     }
     db_=db;
     name_=name;
-    select_stmt_=select_stmt;
+    //select_stmt_=select_stmt;
     select_node_=select_node;
     infos_.assign(infos.begin(),infos.end());
-    std::vector<Table*> select_tables=select_stmt->tables();
+    std::vector<Table*> select_tables=get_select()->tables();
     tables_.assign(select_tables.begin(),select_tables.end());
     int table_size=select_tables.size();
     
     if (table_size==1) is_one_table=true;
-    std::vector<std::unique_ptr<Expression>> &exprs=select_stmt->query_expressions();
+    std::vector<std::unique_ptr<Expression>> &exprs=get_select()->query_expressions();
     if (exprs.empty()) {
       LOG_WARN("no fields selected, view=%s",name_);
       return RC::INVALID_ARGUMENT;
