@@ -426,7 +426,7 @@ public:
    * compare the two tuple cells
    * @param value the result of comparison
    */
-  RC compare_value(const Value &left, const Value &right, bool &value) const;
+  RC compare_value(const Value &left, const Value &right, Triple_Value& result) const;
 
   template <typename T>
   RC compare_column(const Column &left, const Column &right, std::vector<uint8_t> &result) const;

@@ -148,12 +148,12 @@ RC PredicatePhysicalOperator::simplify_comparisons() {
           Value cell;
           if (RC::SUCCESS != cmp_expr->try_get_value(cell))
             continue;
-          if (cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::OR)) {
+          if (1.0 == cell.get_triple_value() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::OR)) {
             predicates_always_true_ = true;
             sql_debug("predicate always true");
             break;
           }
-          else if (!cell.get_boolean() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::AND)){
+          else if (0.0 == cell.get_triple_value() && (conj_expr->children().size() == 1 || conj_expr->conjunction_type() == ConjunctionExpr::Type::AND)){
             predicates_always_false_ = true;
             sql_debug("predicate always false");
             break;
@@ -167,9 +167,9 @@ RC PredicatePhysicalOperator::simplify_comparisons() {
       Value cell;
       if (RC::SUCCESS == cmp_expr->try_get_value(cell)) {  
         // 因为predicate只有一个，左右直接根据CELL的值设置always_true or always_false
-        if (cell.get_boolean()) {
+        if (1.0 == cell.get_triple_value()) {
           predicates_always_true_ = true;
-        } else
+        } else if (0.0 == cell.get_triple_value())
           predicates_always_false_ = true;
       }
     }

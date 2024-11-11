@@ -25,6 +25,7 @@ enum class AttrType : int32_t
   DATES,
   TEXTS,
   NULLS,
+  TRIPLE,
   MAXTYPE,   ///< 请在 UNDEFINED 与 MAXTYPE 之间增加新类型
 };
 

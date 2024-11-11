@@ -27,6 +27,14 @@ See the Mulan PSL v2 for more details. */
  * 当需要对值做运算时，建议使用类似 Value::add 的操作而不是 DataType::add。在进行运算前，应该设置好结果的类型，
  * 比如进行两个INT类型的除法运算时，结果类型应该设置为FLOAT。
  */
+
+enum Triple_Value :uint8_t {
+  UNDEFINED,
+  FALSE,
+  UNKNOWN,
+  TRUE,
+};
+
 class Value final
 {
 public:
@@ -43,7 +51,7 @@ public:
   Value() = default;
 
   ~Value() { reset(); }
-
+  static auto triple_to_float(Triple_Value triple_val) -> float { return triple_val == Triple_Value::TRUE ? 1.0 : (triple_val == Triple_Value::FALSE ? 0.0 : 0.5);} 
   Value(AttrType attr_type, char *data, int length = 4) : attr_type_(attr_type) { this->set_data(data, length); }
 
   explicit Value(int val);
@@ -54,7 +62,6 @@ public:
 
   Value(const Value &other);
   Value(Value &&other);
-
   Value &operator=(const Value &other);
   Value &operator=(Value &&other);
 
@@ -107,7 +114,11 @@ public:
   {
     return DataType::type_instance(value.attr_type())->cast_to(value, to_type, result);
   }
-
+  void set_triple(float v) {
+    this->attr_type_ = AttrType::TRIPLE;
+    this->value_.float_value_ = v;
+  }
+  auto get_triple_value() -> float { return value_.float_value_; }
   void set_type(AttrType type) { this->attr_type_ = type; }
   void set_data(char *data, int length);
   void set_data(const char *data, int length) { this->set_data(const_cast<char *>(data), length); }

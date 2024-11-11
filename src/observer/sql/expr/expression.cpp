@@ -261,21 +261,29 @@ bool ComparisonExpr::isMatch(std::string s, std::string p) const {
 //   }
 // }
 
-RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
+RC ComparisonExpr::compare_value(const Value &left, const Value &right, Triple_Value& result) const
 {
   RC  rc         = RC::SUCCESS;
 
   // handle null a is null
   if (left.attr_type() == AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
-    result = comp_ == CompOp::IS_NULL;
-  sql_debug("both are null");
+    // result = comp_ == CompOp::IS_NULL;
+    sql_debug("both are null");
+    if (comp_ == CompOp::IS_NULL)
+      result = Triple_Value::TRUE;
+    else 
+      result = Triple_Value::FALSE;
     return RC::SUCCESS;
-  } else if (left.attr_type() == AttrType::NULLS || right.attr_type() == AttrType::NULLS) {
-    // 其中一个结果是null。结果为true当且仅当comp_ == IS_NOT_NULL
-    sql_debug("we are in here");
-    result = comp_ == CompOp::IS_NOT_NULL;
+  } else if (left.attr_type() == AttrType::NULLS && right.attr_type() != AttrType::NULLS) {
+    result = Triple_Value::UNKNOWN;
     return RC::SUCCESS;
-  }
+  } else if (left.attr_type() != AttrType::NULLS && right.attr_type() == AttrType::NULLS) {
+    if (comp_ == CompOp::IS_NOT_NULL)
+      result = Triple_Value::TRUE;
+    else
+      result = Triple_Value::UNKNOWN;
+    return RC::SUCCESS;
+  } 
   // both left and right are not null type.
   if (comp_ == CompOp::LK || comp_ == CompOp::NOT_LK) {
     if (left.attr_type() != AttrType::CHARS || right.attr_type() != AttrType::CHARS) {
@@ -283,38 +291,40 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     }
     std::string p(right.get_string());
     std::string s(left.get_string());
-    result = isMatch(s, p);
-    if (comp_ == CompOp::NOT_LK) {
-      result = !result;
+    auto res = isMatch(s, p);
+    if (comp_ == CompOp::LK) {
+      result = (res ? Triple_Value::TRUE : Triple_Value::FALSE);
+    } else {
+      result = (res ? Triple_Value::FALSE : Triple_Value::TRUE);
     }
     return rc;
   }
   int cmp_result = left.compare(right);
-  result         = false;
+  // result         = false;
   switch (comp_) {
     case CompOp::EQUAL_TO: {
-      result = (0 == cmp_result);
+      result = (0 == cmp_result ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::LESS_EQUAL: {
-      result = (cmp_result <= 0);
+      result = (cmp_result <= 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::NOT_EQUAL: {
-      result = (cmp_result != 0);
+      result = (cmp_result != 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::LESS_THAN: {
-      result = (cmp_result < 0);
+      result = (cmp_result < 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::GREAT_EQUAL: {
-      result = (cmp_result >= 0);
+      result = (cmp_result >= 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::GREAT_THAN: {
-      result = (cmp_result > 0);
+      result = (cmp_result > 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     case CompOp::IN_OP:{
-      result = (cmp_result == 0);
+      result = (cmp_result == 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     }break;
     case CompOp::NOT_IN: {
-      result = (cmp_result != 0);
+      result = (cmp_result != 0 ? Triple_Value::TRUE : Triple_Value::FALSE);
     } break;
     default: {
       LOG_WARN("unsupported comparison. %d", comp_);
@@ -333,12 +343,15 @@ RC ComparisonExpr::try_get_value(Value &cell) const
     const Value &left_cell        = left_value_expr->get_value();
     const Value &right_cell       = right_value_expr->get_value();
 
-    bool value = false;
-    RC   rc    = compare_value(left_cell, right_cell, value);
+    // bool value = false;
+    Triple_Value res;
+    RC   rc    = compare_value(left_cell, right_cell, res);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to compare tuple cells. rc=%s", strrc(rc));
     } else {
-      cell.set_boolean(value);
+      // cell.set_boolean(value);
+      float triple_val = (res == Triple_Value::TRUE ? 1.0 : (res == Triple_Value::FALSE ? 0.0 : 0.5));
+      cell.set_triple(triple_val);
     }
     return rc;
   }
@@ -486,28 +499,29 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
   if (is_range_comparator()) {
     // we can assume left hand side is either a column or a constant value(including value returned from sub query).
     for (auto& v : right_values_) {
-      bool result{false};
-      if ((rc = compare_value(left_value, v, result)) != RC::SUCCESS) {
+      // bool result{false};
+      Triple_Value t;
+      if ((rc = compare_value(left_value, v, t)) != RC::SUCCESS) {
         return rc;
       }
-      if (result && comp_ == CompOp::IN_OP) {
-        value.set_boolean(true);
+      if (t == Triple_Value::TRUE && comp_ == CompOp::IN_OP) {
+        value.set_triple(Value::triple_to_float(t));
         return RC::SUCCESS;
       }
-      if (!result && comp_ == CompOp::NOT_IN) {
-        value.set_boolean(false);
+      if (Triple_Value::FALSE == t && comp_ == CompOp::NOT_IN) {
+        value.set_triple(Value::triple_to_float(t));
         return RC::SUCCESS;
       }
     }
-    value.set_boolean(comp_ == CompOp::NOT_IN);
+    value.set_triple((comp_ == CompOp::NOT_IN ? float{1.0} : float{0.0}));
     return RC::SUCCESS;
   }
 
   bool bool_value = false;
-  
-  rc = compare_value(left_value, right_value, bool_value);
+  Triple_Value t;
+  rc = compare_value(left_value, right_value, t);
   if (rc == RC::SUCCESS) {
-    value.set_boolean(bool_value);
+    value.set_triple(Value::triple_to_float(t));
   }
   return rc;
 }
