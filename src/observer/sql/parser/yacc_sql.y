@@ -1519,7 +1519,9 @@ int sql_parse(const char *s, ParsedSqlResult *sql_result) {
   yyscan_t scanner;
   yylex_init(&scanner);
   scan_string(s, scanner);
+  and_flag = 1;
   int result = yyparse(s, sql_result, scanner);
+  and_flag = 1;
   yylex_destroy(scanner);
   return result;
 }
