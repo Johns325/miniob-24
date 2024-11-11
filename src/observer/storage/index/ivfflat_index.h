@@ -43,7 +43,7 @@ public:
     field = stmt.field_meta()[0];
     return RC::SUCCESS;
   };
-  RC open(Table *table, const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
+  RC open(Table *table, const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta) override
   {
 
     return RC::SUCCESS;

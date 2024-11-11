@@ -26,7 +26,7 @@ class FieldMeta;
 class FilterStmt;
 class Db;
 class Table;
-class rel_info;
+struct rel_info;
 class Expression;
 class ExpressionBinder;
 class BinderContext;

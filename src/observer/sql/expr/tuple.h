@@ -523,7 +523,7 @@ private:
   bool own_right_ = false;
 };
 
-static Tuple* tuple_cre_factory(Tuple* t) {
+static inline Tuple* tuple_cre_factory(Tuple* t) {
   Tuple * result;
   switch (t->type()) {
   case TupleType::ROW_TUPLE: {

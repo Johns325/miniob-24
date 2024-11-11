@@ -189,9 +189,9 @@ RC PredicatePhysicalOperator::open(Trx *trx)
     return rc;
   }
   // rc = hand_all_sub_queries();
-  rc = simplify_comparisons();
-  if (!OB_SUCC(rc))
-    return rc;
+  // rc = simplify_comparisons();
+  // if (!OB_SUCC(rc))
+  //   return rc;
   return RC::SUCCESS;
 }
 
