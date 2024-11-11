@@ -164,7 +164,7 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   return RC::SUCCESS;
 }
 
-RC Db::create_view(const char *view_name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema)
+RC Db::create_view(const char *view_name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema,SelectSqlNode* select_node)
 {
   RC rc = RC::SUCCESS;
   if (opened_views_.count(view_name)!=0) {
@@ -173,7 +173,7 @@ RC Db::create_view(const char *view_name, SelectStmt *select_stmt,std::vector<st
   }
 
   View *view=new View();
-  rc=view->create(this,view_name,select_stmt,infos,has_schema);
+  rc=view->create(this,view_name,select_stmt,infos,has_schema,select_node);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create view %s.", view_name);
     delete view;

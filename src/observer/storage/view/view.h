@@ -24,7 +24,7 @@ public:
    * @param name 视图名
    * @param select_stmt 包含的select语句
    */
-    RC create(Db *db,string name,SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema);
+    RC create(Db *db,string name,SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema,SelectSqlNode *select_node);
     SelectStmt *get_select() {return select_stmt_;};
     string name(){return name_;};
     std::vector<Table*> &get_tables() {return tables_;}
@@ -33,7 +33,7 @@ public:
     bool has_schema() {return has_schema_;}
 private:
     Db *db_=nullptr;
-    SelectStmt *select_stmt_=nullptr;
+    SelectStmt *select_stmt_=nullptr;    
     string name_;
     std::vector<Table*> tables_;
     bool is_one_table=false;
@@ -44,4 +44,5 @@ public:
     Table * dumy_table_ {nullptr};
     std::unordered_map<std::string,const FieldMeta *> name_to_meta;
     std::vector<std::string> infos_;
+    SelectSqlNode *select_node_=nullptr;
 };

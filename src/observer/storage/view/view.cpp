@@ -23,7 +23,7 @@ View::~View()
     tables_.clear();
 }
 
-RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema)
+RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema,SelectSqlNode *select_node)
 {
     has_schema_=has_schema;
     if (name=="") {
@@ -33,6 +33,7 @@ RC View::create(Db *db, string name, SelectStmt *select_stmt,std::vector<std::st
     db_=db;
     name_=name;
     select_stmt_=select_stmt;
+    select_node_=select_node;
     infos_.assign(infos.begin(),infos.end());
     std::vector<Table*> select_tables=select_stmt->tables();
     tables_.assign(select_tables.begin(),select_tables.end());

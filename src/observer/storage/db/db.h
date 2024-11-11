@@ -74,7 +74,7 @@ public:
    * @param view_name 视图名
    * @param select_stmt 视图对应的select语句
    */
-  RC create_view(const char *view_name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema);
+  RC create_view(const char *view_name, SelectStmt *select_stmt,std::vector<std::string> &infos,bool has_schema,SelectSqlNode* select_node);
 
   auto drop_table(const std::string tb_name) -> RC;
   /**

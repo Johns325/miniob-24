@@ -29,8 +29,8 @@ class SelectStmt;
 class CreateViewStmt : public Stmt
 {
 public:
-  CreateViewStmt(const std::string &view_name, SelectStmt*stmt, std::vector<std::string> &&info,bool has_schema)
-  : view_name_(view_name), select_stmt_(stmt), info_(std::move(info)),has_schema_(has_schema){}
+  CreateViewStmt(const std::string &view_name, SelectStmt*stmt, std::vector<std::string> &&info,bool has_schema,SelectSqlNode *select_node)
+  : view_name_(view_name), select_stmt_(stmt), info_(std::move(info)),has_schema_(has_schema),select_node_(select_node){}
   virtual ~CreateViewStmt() = default;
 
   StmtType type() const override { return StmtType::CREATE_VIEW; }
@@ -43,6 +43,9 @@ public:
 private:
   std::string                  view_name_;
   SelectStmt   *select_stmt_;
+  
   std::vector<std::string> info_;
-  bool has_schema_=false;
+  bool has_schema_;
+public:  
+  SelectSqlNode *select_node_;
 };

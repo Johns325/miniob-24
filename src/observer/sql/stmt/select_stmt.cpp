@@ -475,7 +475,12 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   if (rc = bind_where(db, binder.get(), select_sql.conditions, bound_where_expressions); !OB_SUCC(rc)) {
     return rc;
   }
-  
+  if (is_view) {
+    View* view=db->find_view(select_sql.relations[0]->relation_name.data());
+    if (rc = bind_where(db, binder.get(),view->select_node_->conditions, bound_where_expressions); !OB_SUCC(rc)) {
+      return rc;
+    }
+  }
   
   
   // actually we can convert all expressions in bound_where_expressions to ComparisonExprs
@@ -484,7 +489,12 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
   if (rc = bind_group_by(binder.get(), select_sql.group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
     return rc;
   }
-
+  if (is_view) {
+    View* view=db->find_view(select_sql.relations[0]->relation_name.data());
+    if (rc = bind_group_by(binder.get(), view->select_node_->group_by, bound_group_by_expressions); !OB_SUCC(rc)) {
+      return rc;
+    }
+  }
   /* ******************************************************{bind_having}*******************************************************************/ 
   // having 中只能有出现在select后面的聚合表达式以及出现在group by后面的字段
   vector<unique_ptr<Expression>> bound_having_expressions; // 可以直接丢给Predicate Operator
@@ -497,6 +507,22 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt, Bound_Info
       rc = binder->bind_expression(uniq_expr, bound_having_expressions);
       if (!OB_SUCC(rc)) {
         return rc;
+      }
+    }
+  }
+
+  if (is_view) {
+    View* view=db->find_view(select_sql.relations[0]->relation_name.data());
+    if (nullptr != view->select_node_->having) {
+      for (auto &expr : *view->select_node_->having) {
+        if (!is_blank(expr->alias())) {
+          info.alias_2_expressions.insert({expr->alias(), expr});
+        }
+        std::unique_ptr<Expression> uniq_expr(expr);
+        rc = binder->bind_expression(uniq_expr, bound_having_expressions);
+        if (!OB_SUCC(rc)) {
+          return rc;
+        }
       }
     }
   }
